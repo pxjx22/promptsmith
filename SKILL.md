@@ -90,7 +90,7 @@ Provide 3–6 bullets naming what changed and why.
    - **Repository rules:** save directly to target root as `AGENTS.md`,
      `CLAUDE.md`, or `GEMINI.md`.
    - **General prompt:** save to `~/prompts/<slug>.md` (the unified personal vault).
-   - `slug` = `YYYY-MM-DD-<kebab-goal>` (today's date, short kebab summary).
+   - `slug` = `<kebab-goal>` (concise, descriptive kebab-case topic name, e.g. `monolith-sync-remediation.md`). Do NOT prefix with the date — the creation date is tracked in the YAML frontmatter.
    - If target file exists, ask: overwrite, or save as `<slug>-2`?
    - File contents = YAML frontmatter then the prompt body only:
      ```markdown

@@ -88,6 +88,9 @@ Promptsmith will ask clarifying questions if key details (target harness, runtim
 - **Global vault**: `~/prompts/<slug>.md`
 - **Project vault**: `./prompts/<slug>.md` (when targeting an active repository)
 
+> [!TIP]
+> **Filenaming Convention**: Files use clean, topic-first kebab-case slugs (e.g. `monolith-sync-remediation.md`, `worker-pool-exhaustion.md`) without date prefixes, preserving fast shell tab-completion and clean alphabetical sorting. Metadata including creation timestamp, target model, and mode are tracked cleanly in YAML frontmatter.
+
 ---
 
 ## 🛠️ Modes & Archetypes
