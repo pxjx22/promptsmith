@@ -1,11 +1,11 @@
 # Prompt-Engineering Master Cheatsheet
 
-> Last verified: 2026-09-04, synthesized from:
-> - Google DeepMind & Google Cloud: Prompt Engineering Whitepaper (Boonstra, Gulli, Cao, Nawalgaria) & Step-Back Prompting (Zheng et al.)
-> - Anthropic: "Building Effective Agents" (Dec 2024/2025) & Claude 5-Series Guides (Fable 5.1, Opus 5, Sonnet 5, Sept 2026)
-> - OpenAI: Codex Prompting Guide & GPT-5.6 Series Architecture (terra, sol, luna, Sept 2026)
-> - Berkeley & Stanford Research: Calibrate Before Use (Zhao et al.), ReAct (Yao et al.), Reflexion (Shinn et al.)
-> - Antigravity: AGY CLI 2.0 & Gemini 3.8 Best Practices
+> Last verified: 2026-09-07, synthesized from:
+> - Google DeepMind & Google Cloud: Prompt Engineering Whitepaper (Boonstra, Gulli, Cao, Nawalgaria), Step-Back Prompting (Zheng et al.) & Scaling Test-Time Compute (Snell et al.)
+> - Anthropic: "Building Effective Agents" & Claude 5-Series Guides (Fable 5.1, Opus 5, Sonnet 5)
+> - OpenAI: Codex Prompting Guide & GPT-6 Astra / GPT-5.6 Sol Architectures
+> - Academic Frontier Research: TokenPilot (Cache Invalidation Paradox, arXiv:2606.17016), Lost in the Middle (Liu et al.), SWE-agent (ACI Stream Filtering, Yang et al.), MemGPT (Virtual Context Paging, Packer et al.)
+> - Antigravity: AGY CLI 2.0 & Gemini 3.8 / 3.1 Best Practices
 
 ---
 
@@ -161,29 +161,42 @@ Why: Modern models can over-delegate to subagents when a single fast tool call w
 
 ---
 
-## 9. Token Efficiency & Cache Hygiene
+## 9. Token Efficiency & Context Architecture (2026 Research)
 
-**The Anti-Slurp Directive (Preventing Tool Blowups):**
-Why: The #1 cause of catastrophic context compaction is an agent running an unconstrained search or viewing giant files, injecting 20,000+ tokens of noise in a single turn.
-- Directives to include:
-  * `Inspect files with line bounds; never dump files exceeding 150 lines without targeting specific ranges.`
-  * `Use bounded search tools (e.g. rg -n -C 1, git diff --stat first, head/tail).`
-
-**Cache Prefix Invariance (KV Cache Optimization):**
-Why: Frontier models (Anthropic, OpenAI, Gemini) cache static prompt prefixes, slashing latency by 80% and cost by 90%. Any dynamic token (timestamp, run ID, branch state) placed at the top invalidates the entire cache for subsequent turns.
+**The "Cache Invalidation Paradox" & Prefix Invariance (TokenPilot, 2026):**
+Why: In agentic loops, naive string pruning breaks prompt layout and invalidates cached KV tensors, increasing latency and cost. Maintaining byte-for-byte static prefixes yields 50%–90% cost reductions across Anthropic, OpenAI, and Google.
 - Invariant structure: `[Static System Instructions & Rules] -> [Tool Definitions] -> [Cached Base Prompt] -> [Dynamic Inputs / User Query at BOTTOM]`.
-- Keep YAML frontmatter static or omit high-frequency timestamps from prompt headers.
+- Keep YAML frontmatter static; never place dynamic timestamps, Git SHAs, or session IDs in prompt headers.
+
+**The 60%–70% "Fracture Zone" Compaction Trigger (Lost in the Middle, Liu et al.):**
+Why: Attention and retrieval accuracy do not degrade linearly—they follow a U-curve with sharp degradation when critical context is buried in the middle 40%–70% of the window.
+- Do not wait for 90%+ context capacity warnings.
+- Proactively trigger compaction or checkpointing at **60% window utilization** to prevent "fracture zone" hallucination and reasoning failure.
+
+**Agent-Computer Interface (ACI) Stream Filtering (SWE-agent, Princeton):**
+Why: Unbounded terminal outputs dump 20,000+ tokens into context in a single turn. Piped stream filters cut tool output token burn by >50%.
+- Enforce piped commands in briefs and scripts:
+  * `<command> | head -n 30` or `<command> | tail -n 25`
+  * `rg --max-count 10 <pattern>`
+  * `journalctl -u <service> -n 25 --no-pager`
+  * `git diff --stat` before `git diff`
+
+**Memory Virtualization: RAM vs. Swap (MemGPT, Packer et al.):**
+Why: Active conversational context is limited RAM; disk is virtually unlimited Swap.
+- Decouple heavy implementation plans, extensive diffs, and research dossiers to disk artifacts (e.g. `<brain>/<session>/` or `.planning/STATE.md`).
+- Pass compact file pointers (`@path`) in conversation rather than maintaining thousands of lines of documentation in active context.
+
+**Test-Time Deliberation Damping (Scaling Test-Time Compute, Snell et al.):**
+Why: Unbounded test-time deliberation hits an exponential plateau where compute scales rapidly without accuracy gains.
+- On routine bugfixes and mechanical edits: `Commit to the first direct, verifiable solution. Do not evaluate alternative architectural paradigms for this fix.`
+- Configure explicit reasoning ceilings: `thinkingTokenLimit: 8000` (Claude), `reasoning_effort: low` (Codex), or Gemini Thinking Level `low/medium`.
 
 **Diff-First Output Contracts:**
 Why: Asking a model to "return the updated file" causes it to output 800 lines of unchanged code, burning output tokens and bloating downstream conversational history.
 - Directive: `Produce minimal, surgical diffs (unified diff format or apply_patch) or targeted line replacements; never echo unchanged code blocks.`
 
-**Reasoning / Thinking Token Damping:**
-Why: Frontier reasoning models (Claude Fable/Opus, GPT-5.6, Gemini Flash Thinking) can expend 4,000+ thinking tokens exploring complex paradigms for one-line mechanical fixes.
-- For bugfixes & mechanical edits: `Commit to the first direct, verifiable solution. Do not evaluate alternative architectural paradigms for this fix.`
-- For Claude Opus 5: Explicitly instruct brevity to curb verbosity tokens.
-
 **Repository Rules Context Tax:**
 Why: `AGENTS.md` and `CLAUDE.md` are injected on *every turn*. Over a 25-turn session, a 500-line rule file costs 15,000+ extra input tokens.
 - Keep root rules concise (<120 lines / ~800 tokens). Push domain-specific rules down into subdirectories or invoke them via on-demand skills.
+
 

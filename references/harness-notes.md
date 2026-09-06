@@ -44,35 +44,48 @@ Current Claude models share strong XML structure affinity and instruction follow
 - **Literal instruction following:** Follows constraints to the letter — ensure negative constraints are airtight, or preferably phrased as positive bounds.
 - **High frontend defaults:** Produces polished, accessible, responsive UI code out of the box without needing basic layout hand-holding.
 
-### Cross-Claude guards (all Claude models)
-- **Prefix cache stability:** Claude automatically caches prompt prefixes (up to 5m/1h ephemeral). Keep system instructions, tools, and `CLAUDE.md` byte-for-byte identical; place dynamic inputs at the prompt tail.
+### Cross-Claude guards & Token Architecture
+- **Context Budget & Auto-Compact:** 200,000-token working limit. Claude Code automatically reserves a 16.5% buffer (~33,000 tokens) for auto-compaction (`CLAUDE_CODE_AUTO_COMPACT_WINDOW`).
+- **Proactive Compaction:** Use targeted manual compaction around 50%–60% usage before hitting the "fracture zone": `/compact focus on <core module>, omit closed test traces`.
+- **Reasoning Token Cap:** Bound test-time deliberation in `~/.claude/settings.json`:
+  ```json
+  {
+    "model": "claude-sonnet-5",
+    "thinkingTokenLimit": 8000,
+    "tokenBudget": { "autoCompactAt": 0.60 }
+  }
+  ```
+- **Prefix cache stability:** Claude automatically caches prompt prefixes (90% discount, 5m sliding TTL). Keep system instructions, tools, and `CLAUDE.md` byte-for-byte identical; place dynamic inputs at the prompt tail.
 - **Tool slicing:** Instruct Claude to use `view_file` with `StartLine`/`EndLine` slices rather than viewing entire files.
 - **Prevent file sprawl:** Explicitly instruct Claude not to create extra markdown summaries, helper scripts, or scratch files in the repository root ("Only create files directly required for the task; do not generate standalone explanation docs or scratch notes").
 - **Anti-test-gaming:** Instruct the model to write general solutions rather than hardcoding to test fixtures ("Implement a general solution; do not hard-code logic to pass specific test cases").
 - **XML tag hierarchy:** Put long input data/documents at the TOP, query and instructions at the BOTTOM.
 - **Project rules:** `CLAUDE.md`.
 
-## Codex (GPT-5.6 series via Codex CLI: gpt-5.6-terra, gpt-5.6-sol, gpt-5.6-luna)
+## Codex (GPT-6 Astra & GPT-5.6 series via Codex CLI)
 
-Codex runs GPT-5.6 models tuned for long-running autonomous agency and tool efficiency:
+Codex runs GPT-6 Astra (1,050,000-token context window; active execution buffer ~258k tokens) and GPT-5.6 Sol/Terra:
 
 - **Autonomy posture:** Optimized for deep, multi-hour autonomous execution. Set the stance: "Act as an autonomous senior engineer — proactively gather context, plan, implement, test, and refine without waiting for additional prompts at each step. Bias to action; make reasonable assumptions; only stop with questions if truly blocked. Every turn ends with a concrete edit or an explicit blocker."
-- **Prefix cache optimization:** Codex caches prompts >=1024 tokens. Ensure root `AGENTS.md` and tool configs remain static across sessions.
+- **Prompt Cache Breakpoint & 30m TTL:** Codex uses a 30-minute sliding window with 50% discount on cached tokens. Ensure `prompt_cache_breakpoint = true` in config to prevent volatile tool outputs from invalidating the system prompt.
+- **Reasoning Effort Tuning:** In `~/.codex/config.toml`, set `reasoning_effort = "low"` for routine feature edits and bugfixes to avoid test-time deliberation plateaus; escalate to `"medium"`/`"high"` only for deep architectural forensics.
 - **Patching over rewriting:** Strict solver tool priority (`rg` over grep, `apply_patch` for single-file edits, dedicated `git` tool over raw shell). Bar full-file rewrites.
-- **Preambles vs Upfront plans:** GPT-5.6 supports concise preambles/developer commentary naturally (1–2 sentences every few steps). However, do **not** ask for a rigid upfront plan or heavy status narration during rollout, as this risks early stopping before execution completes.
+- **Preambles vs Upfront plans:** GPT-6/5.6 supports concise preambles/developer commentary naturally (1–2 sentences every few steps). Do **not** ask for a rigid upfront plan or heavy status narration during rollout, as this risks early stopping before execution completes.
 - **Strict error handling:** Bar broad try/catch blocks, silent fallbacks, or early returns without proper logging ("Propagate or surface errors explicitly rather than swallowing them; do not add success-shaped fallbacks").
-- **Dirty worktree safety:** Explicitly instruct the model to respect uncommitted changes ("You may be in a dirty git worktree. Never revert changes outside the immediate scope of this task. Never run destructive git commands like `reset --hard` or `checkout --`").
-- **Code review requests:** Codex defaults to findings-first, severity-ordered, with exact file:line citations and testing gaps.
-- **Compaction resilience:** For tasks spanning hours, instruct Codex to persist checkpoint state in structured files or tests.
+- **Dirty worktree safety:** Respect uncommitted changes ("You may be in a dirty git worktree. Never revert changes outside the immediate scope of this task. Never run destructive git commands like `reset --hard` or `checkout --`").
 - **Project rules:** `AGENTS.md` (merged hierarchically from root to cwd).
-- *Settings, not prompt text:* `model_reasoning_effort` ("medium" for daily interactive work, "high" / "xhigh" for complex debugging or architecture).
 
-## agy (Antigravity CLI 2.0, Gemini 3.8 models)
+## agy (Antigravity CLI 2.0, Gemini 3.8 & 3.1 models)
 
-Antigravity operates with local tooling, TUI interactive buffers, and native plan artifacts:
+Antigravity operates with local tooling, TUI interactive buffers, and dual-layer context virtualization:
 
+- **Context Architecture:** Gemini 3.8 Flash provides a 1,000,000-token window with a 65,536-token generation ceiling, paired with Gemini 3.1 Pro for deep reasoning.
+- **Memory Virtualization (RAM vs. Swap):** Verbose tool outputs and full logs stream to `transcript_full.jsonl` on disk; active context keeps a compact stub in `transcript.jsonl`.
+- **Implementation Plan Artifacts:** Write multi-step plans to persistent markdown artifacts (`<appDataDir>/brain/<session-id>/`) rather than echoing thousands of tokens of plan text into active chat context.
+- **Hook Telemetry & Safe Compaction:**
+  * When context reaches **$\le$ 35% remaining**: finish in-flight subtasks; do not initiate broad exploratory sweeps.
+  * When context reaches **$\le$ 25% remaining**: halt execution, checkpoint status to `.planning/STATE.md`, and execute safe compaction.
 - **Verification loops are #1:** Provide concrete local test / build / lint commands; the agent automatically runs them and iterates on outputs.
-- **Artifacts over chat spam:** Write exploration plans to **Implementation Plan Artifacts** (`.md` in brain/workspace) rather than echoing long markdown outlines into chat context.
 - **Subagent fan-out damping:** Spawn subagents only for concurrent, independent sweeps; work directly for sequential edits to avoid exponential context inflation.
 - **Multimodal token budget:** When pasting screenshots or recordings (`ctrl+v`), crop to the relevant widget or UI pane rather than pasting full-screen multi-monitor canvases.
 - **Context hydration:** Reference files with `@path` to trigger the interactive path suggestion overlay.

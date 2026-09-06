@@ -34,10 +34,13 @@ def analyze_hygiene(content: str) -> dict:
     """Analyze context hygiene, anti-slurp bounds, and caching indicators."""
     lower = content.lower()
     
-    # 1. Anti-slurp checks (bounds on tool output)
+    # 1. Anti-slurp & ACI stream filtering checks (SWE-agent / Princeton)
     has_anti_slurp = any(kw in lower for kw in [
         "anti-slurp", "line ranges", "line limit", "bounded", "do not cat", 
-        "never dump whole", "stay within", "rg -n", "head", "tail", "exceeding 200 lines"
+        "never dump whole", "stay within", "rg -n", "head", "tail", "exceeding", "max-count"
+    ])
+    has_aci_stream = any(kw in lower for kw in [
+        "| head", "| tail", "max-count", "diff --stat", "no-pager", "-n 25", "-n 30", "-n 50"
     ])
     
     # 2. Diff-first / surgical output checks
@@ -45,12 +48,12 @@ def analyze_hygiene(content: str) -> dict:
         "diff", "patch", "minimal diff", "surgical", "apply_patch", "unified diff"
     ])
     
-    # 3. Thinking / verbosity damping
+    # 3. Thinking / verbosity damping (Snell et al. / DeepMind)
     has_thinking_damping = any(kw in lower for kw in [
         "damping", "overthinking", "concise", "be direct", "commit to the first", "effort"
     ])
     
-    # 4. Prompt caching prefix cleanliness (does it put dynamic timestamps at the very head?)
+    # 4. Prompt caching prefix cleanliness (TokenPilot / arXiv:2606.17016)
     cache_warning = False
     lines = content.strip().splitlines()
     if lines and lines[0].strip() == "---":
@@ -72,6 +75,7 @@ def analyze_hygiene(content: str) -> dict:
 
     return {
         "anti_slurp": has_anti_slurp,
+        "aci_stream": has_aci_stream,
         "diff_contract": has_diff_contract,
         "thinking_damping": has_thinking_damping,
         "cache_warning": cache_warning,
@@ -186,6 +190,7 @@ def cmd_compare(args):
     print("-" * 60)
     print("HYGIENE & GUARDRAIL RETENTION:")
     print(f"  Anti-slurp bounds:   [{'✓' if h1['anti_slurp'] else '✗'}] -> [{'✓' if h2['anti_slurp'] else '✗'}]")
+    print(f"  ACI stream filter:   [{'✓' if h1['aci_stream'] else '✗'}] -> [{'✓' if h2['aci_stream'] else '✗'}]")
     print(f"  Diff-first contract: [{'✓' if h1['diff_contract'] else '✗'}] -> [{'✓' if h2['diff_contract'] else '✗'}]")
     print(f"  Thinking damping:    [{'✓' if h1['thinking_damping'] else '✗'}] -> [{'✓' if h2['thinking_damping'] else '✗'}]")
     print(f"  Constraint bullets:  {h1['constraints_count']} in original vs {h2['constraints_count']} in compressed")
@@ -197,17 +202,23 @@ def cmd_compare(args):
 
 
 def cmd_tax(args):
-    """Calculate cumulative session context tax."""
+    """Calculate cumulative session context tax and fracture zone threshold."""
     tokens = args.tokens
     turns = args.turns
     total = tokens * turns
-    print(f"Prompt base tokens: {tokens:,}")
-    print(f"Session turn depth: {turns} turns")
+    print(f"Prompt base tokens:     {tokens:,}")
+    print(f"Session turn depth:     {turns} turns")
     print(f"Cumulative context tax: {total:,} input tokens across session")
     cost_uncached = (total / 1_000_000) * 3.0
     cost_cached = (total / 1_000_000) * 0.30
-    print(f"Estimated re-reading cost (uncached): ~${cost_uncached:.4f}")
-    print(f"Estimated re-reading cost (cached):   ~${cost_cached:.4f} (90% cache discount)")
+    print(f"Estimated reading cost (uncached): ~${cost_uncached:.4f}")
+    print(f"Estimated reading cost (cached):   ~${cost_cached:.4f} (90% cache discount)")
+    
+    # 200k Claude window reference & 60% fracture zone
+    claude_headroom = 200_000
+    utilization_200k = (total / claude_headroom) * 100
+    status = "⚠️  Enters 60%–70% fracture zone! Compact proactively." if utilization_200k >= 60 else "✓  Within healthy attention threshold (<60%)."
+    print(f"200k Context Consumption:          {utilization_200k:.1f}% ({status})")
 
 
 def main():
