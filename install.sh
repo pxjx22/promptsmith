@@ -16,7 +16,7 @@ DESTS=(
   "${HOME}/.gemini/config/skills/promptsmith"
 )
 
-echo "=== Promptsmith Installer (v2.0.0) ==="
+echo "=== Promptsmith Installer (v2.1.0) ==="
 echo "Source: $SCRIPT_DIR"
 echo
 
@@ -30,6 +30,7 @@ for dest in "${DESTS[@]}"; do
     "$CP" -a "$SCRIPT_DIR/SKILL.md" "$dest/"
     "$CP" -a "$SCRIPT_DIR/agents" "$dest/"
     "$CP" -a "$SCRIPT_DIR/references" "$dest/"
+    [[ -d "$SCRIPT_DIR/tools" ]] && "$CP" -a "$SCRIPT_DIR/tools" "$dest/"
     echo "  [+] Installed to: $dest"
     installed_count=$((installed_count + 1))
   else

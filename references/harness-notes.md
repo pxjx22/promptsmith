@@ -20,6 +20,8 @@ harness-specific levers.
   and symbols in scope instead of pasting long excerpts.
 - **Explicit action verbs** ("implement", "change", "add") and an observable
   done-criteria.
+- **Anti-slurp tool bounds.** Instruct the agent to use targeted searches (`rg -n -C 1`, `git diff --stat`) and line ranges; bar reading full files exceeding 150 lines without bounds.
+- **Diff-first output contract.** Produce minimal unified diffs or patch payloads; never echo back unmodified files.
 - **Scope ceiling** — "don't refactor unrelated code, don't add abstractions or
   dependencies the task doesn't need".
 - **Phased for complex work:** explore → plan → (user approves) → execute.
@@ -43,6 +45,8 @@ Current Claude models share strong XML structure affinity and instruction follow
 - **High frontend defaults:** Produces polished, accessible, responsive UI code out of the box without needing basic layout hand-holding.
 
 ### Cross-Claude guards (all Claude models)
+- **Prefix cache stability:** Claude automatically caches prompt prefixes (up to 5m/1h ephemeral). Keep system instructions, tools, and `CLAUDE.md` byte-for-byte identical; place dynamic inputs at the prompt tail.
+- **Tool slicing:** Instruct Claude to use `view_file` with `StartLine`/`EndLine` slices rather than viewing entire files.
 - **Prevent file sprawl:** Explicitly instruct Claude not to create extra markdown summaries, helper scripts, or scratch files in the repository root ("Only create files directly required for the task; do not generate standalone explanation docs or scratch notes").
 - **Anti-test-gaming:** Instruct the model to write general solutions rather than hardcoding to test fixtures ("Implement a general solution; do not hard-code logic to pass specific test cases").
 - **XML tag hierarchy:** Put long input data/documents at the TOP, query and instructions at the BOTTOM.
@@ -53,8 +57,9 @@ Current Claude models share strong XML structure affinity and instruction follow
 Codex runs GPT-5.6 models tuned for long-running autonomous agency and tool efficiency:
 
 - **Autonomy posture:** Optimized for deep, multi-hour autonomous execution. Set the stance: "Act as an autonomous senior engineer — proactively gather context, plan, implement, test, and refine without waiting for additional prompts at each step. Bias to action; make reasonable assumptions; only stop with questions if truly blocked. Every turn ends with a concrete edit or an explicit blocker."
+- **Prefix cache optimization:** Codex caches prompts >=1024 tokens. Ensure root `AGENTS.md` and tool configs remain static across sessions.
+- **Patching over rewriting:** Strict solver tool priority (`rg` over grep, `apply_patch` for single-file edits, dedicated `git` tool over raw shell). Bar full-file rewrites.
 - **Preambles vs Upfront plans:** GPT-5.6 supports concise preambles/developer commentary naturally (1–2 sentences every few steps). However, do **not** ask for a rigid upfront plan or heavy status narration during rollout, as this risks early stopping before execution completes.
-- **Solver tools & parallelism:** Strict solver tool priority (`rg` over grep, `apply_patch` for single-file edits, dedicated `git` tool over raw shell). Maximize parallel tool calls (`multi_tool_use.parallel`) for reads and searches.
 - **Strict error handling:** Bar broad try/catch blocks, silent fallbacks, or early returns without proper logging ("Propagate or surface errors explicitly rather than swallowing them; do not add success-shaped fallbacks").
 - **Dirty worktree safety:** Explicitly instruct the model to respect uncommitted changes ("You may be in a dirty git worktree. Never revert changes outside the immediate scope of this task. Never run destructive git commands like `reset --hard` or `checkout --`").
 - **Code review requests:** Codex defaults to findings-first, severity-ordered, with exact file:line citations and testing gaps.
@@ -67,11 +72,12 @@ Codex runs GPT-5.6 models tuned for long-running autonomous agency and tool effi
 Antigravity operates with local tooling, TUI interactive buffers, and native plan artifacts:
 
 - **Verification loops are #1:** Provide concrete local test / build / lint commands; the agent automatically runs them and iterates on outputs.
-- **Phased work produces Plan Artifacts:** "Explore how X works. Write an implementation plan artifact. Once I approve it, apply the edits and run the verification command."
-- **Context hydration:** Reference files with `@path` to trigger the interactive path suggestion overlay. For UI, rendering, or styling issues, paste screenshots or screen recordings directly into the prompt using `ctrl+v`.
+- **Artifacts over chat spam:** Write exploration plans to **Implementation Plan Artifacts** (`.md` in brain/workspace) rather than echoing long markdown outlines into chat context.
+- **Subagent fan-out damping:** Spawn subagents only for concurrent, independent sweeps; work directly for sequential edits to avoid exponential context inflation.
+- **Multimodal token budget:** When pasting screenshots or recordings (`ctrl+v`), crop to the relevant widget or UI pane rather than pasting full-screen multi-monitor canvases.
+- **Context hydration:** Reference files with `@path` to trigger the interactive path suggestion overlay.
 - **Interactive multiline buffers:** When composing complex briefs in the terminal, press `ctrl+g` to open `$EDITOR`, use `Shift+Enter` (or trailing `\`) for clean newlines, and press `esc` for instant turn cancellation.
 - **Scripting with `-p`:** For automated git hooks or CI scripts, write one-shot self-contained prompts: `agy -p "<prompt>" --cwd $(pwd)`.
-- **Parallel subagent fan-out:** For large sweeps or multi-module refactoring, instruct agy to dispatch background subagents: "Spawn parallel subagents to inspect [modules] concurrently."
 - **Project rules:** `GEMINI.md` or `AGENTS.md` at workspace root.
 - *Settings, not prompt text:* Filesystem containment and tool permissions live in `~/.gemini/antigravity-cli/settings.json` (`request-review`, `proceed-in-sandbox`, `strict`).
 

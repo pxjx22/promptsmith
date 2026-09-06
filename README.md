@@ -18,10 +18,14 @@ Promptsmith is a unified skill that designs, refines, and audits prompts and age
   - **Prefix Hygiene & Prompt Caching**: Structuring static guidelines and system context ahead of dynamic inputs for cache hits.
   - **Compaction & Context Budgeting**: High-density markdown, structured anchor tables, and handoff manifests designed for long-running autonomous workflows.
   - **Anti-Gaming & Subagent Damping**: Rigorous guardrails against superficial test passing, mock-abuse, and runaway agent recursion.
-- **Three Core Modes**:
+- **Four Core Modes**:
   1. `coding-agent-brief` (Default): Production task briefs for coding agents across 5 specialized archetypes.
-  2. `repo-rules`: Authoring and auditing repository instruction files (`AGENTS.md`, `CLAUDE.md`, `GEMINI.md`).
-  3. `general-llm-prompt`: Production prompts, strict JSON Schemas, few-shot classifiers, and a 6-pillar critique rubric.
+  2. `repo-rules`: Authoring and auditing repository instruction files (`AGENTS.md`, `CLAUDE.md`, `GEMINI.md`) with context tax discipline.
+  3. `general-llm-prompt`: Production prompts, strict JSON Schemas, few-shot classifiers, and reasoning templates.
+  4. `prompt-compressor`: Audit and minify bloated prompts and rules (targeting 40%–60% token savings, anti-slurp bounds, prefix caching).
+- **7-Pillar Evaluation Rubric**:
+  Goal/Done-Criteria, Information Hierarchy & XML, Positive Framing, Guardrails, Grounding/Verification, Target Harness Alignment, and **Token Efficiency & Cache Hygiene**.
+- **Integrated Token Audit CLI**: Built-in `tools/token_audit.py` for token counting, session context tax projections, and A/B prompt compression comparisons.
 
 ---
 
@@ -113,7 +117,31 @@ Designs or evaluates production prompts for application integration:
 - **Role & Objective**: High-clarity system framing.
 - **Strict JSON Schema Contracts**: Structured output guarantees without parsing errors.
 - **Class-Balanced Few-Shot**: Eliminates label skew and ordering bias in classification and extraction tasks.
-- **6-Pillar Critique Rubric**: Audits existing prompts against Clarity, Constraint Precision, Example Balance, Error Boundary Handling, Token Economy, and Harness Alignment.
+- **Reasoning Patterns**: Step-Back prompting for complex analysis.
+
+### Mode 4: `prompt-compressor`
+Audits and minifies bloated prompts, system instructions, or agent briefs:
+- **40%–60% Token Reduction**: Prunes conversational fluff and restatements of model defaults.
+- **Context Tax Defense**: Injects anti-slurp bounded tool directives and diff-first output contracts.
+- **Cache Stabilization**: Reorders static system context to prompt head and dynamic inputs to bottom.
+- **Ultra-Terse Delivery**: Prints only the minified prompt and single-line token delta without conversational commentary.
+
+---
+
+## 🛠️ Token Audit & Benchmarking CLI
+
+Promptsmith includes a standalone benchmarking tool [`tools/token_audit.py`](tools/token_audit.py) powered by `uv` and `tiktoken`:
+
+```bash
+# Audit token counts, hygiene, and 20-turn session context taxes
+./tools/token_audit.py audit
+
+# A/B comparison between original and compressed prompts
+./tools/token_audit.py compare original.md compressed.md
+
+# Calculate multi-turn cumulative context tax
+./tools/token_audit.py tax 1850 --turns 20
+```
 
 ---
 
@@ -123,9 +151,9 @@ Promptsmith includes model-specific calibration notes in [`references/harness-no
 
 | Family | Supported Models | Harness Optimizations |
 |---|---|---|
-| **Anthropic Claude 5** | Fable 5.1, Opus 5, Sonnet 5 | XML tags (`<context>`, `<instructions>`), prompt caching prefix ordering, thinking budget tuning, negative constraint placement. |
-| **OpenAI GPT-5.6** | GPT-5.6 Terra, GPT-5.6 Sol | Markdown headers, strict JSON Schema (`response_format`), explicit tool-call contracts, low-temperature sampling. |
-| **Google Gemini / AGY** | Gemini 3.8 Flash, Pro, AGY 2.0 | Explicit system instructions, multi-modal framing, grounded citations, subagent damping controls. |
+| **Anthropic Claude 5** | Fable 5.1, Opus 5, Sonnet 5 | XML tags (`<context>`, `<instructions>`), prompt caching prefix ordering, Opus verbosity damping, tool line-slicing. |
+| **OpenAI GPT-5.6** | GPT-5.6 Terra, GPT-5.6 Sol | Strict JSON Schema (`response_format`), `apply_patch` priority over full-file rewrites, prefix caching (>=1024 tokens). |
+| **Google Gemini / AGY** | Gemini 3.8 Flash, Pro, AGY 2.0 | Implementation Plan Artifacts over chat spam, subagent damping, multimodal crop budgeting (`ctrl+v`), grounded citations. |
 
 ---
 
@@ -133,18 +161,20 @@ Promptsmith includes model-specific calibration notes in [`references/harness-no
 
 ```
 promptsmith/
-├── SKILL.md                          # Master skill orchestrator & entrypoint
+├── SKILL.md                          # Master skill orchestrator & entrypoint (v2.1.0)
 ├── install.sh                        # Cross-harness installer and syncer
 ├── LICENSE                           # MIT License
 ├── README.md                         # Documentation & usage guide
 ├── agents/
 │   └── openai.yaml                   # Codex agent skill definition
+├── tools/
+│   └── token_audit.py                # Token audit, benchmarking, and comparison CLI
 └── references/
-    ├── best-practices.md             # Core prompt engineering cheatsheet & research
-    ├── coding-agent-brief.md         # Brief templates & the 5 task archetypes
-    ├── general-llm-prompt.md         # Application prompt patterns & critique rubric
-    ├── repo-rules.md                 # AGENTS.md / CLAUDE.md / GEMINI.md template
-    └── harness-notes.md              # Model-specific parameters & nuances
+    ├── best-practices.md             # Core prompt engineering cheatsheet, research & Section 9: Token Hygiene
+    ├── coding-agent-brief.md         # Brief templates, anti-slurp bounds & the 5 task archetypes
+    ├── general-llm-prompt.md         # Application prompt patterns, prompt compressor & 7-pillar rubric
+    ├── repo-rules.md                 # AGENTS.md / CLAUDE.md / GEMINI.md template & budget ceiling
+    └── harness-notes.md              # Model-specific parameters, cache rules & nuance
 ```
 
 ---

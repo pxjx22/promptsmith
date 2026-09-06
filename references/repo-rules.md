@@ -58,9 +58,10 @@ safety boundaries, and non-obvious environment gotchas.
 - Style: Match existing repo patterns; avoid unnecessary abstractions.
 ```
 
-## Best Practices for Repo Rules
+## Best Practices & Context Tax Discipline
 
-1. **Keep it under 100 lines:** Bloated rule files waste context tokens on every turn and dilute instruction-following attention.
-2. **State the *why* for rules:** Models generalize reasons to unstated edge cases. Bare bans ("never do X") invite clever but flawed workarounds.
-3. **Prioritize the non-obvious:** Put commands, gotchas, and quirks that the model cannot deduce from reading package manifests.
-4. **Distinguish hard barriers from soft preferences:** Group non-negotiables under `## Hard Rules` so the model treats them as inviolable guardrails.
+1. **Strict Context Budget (<120 lines / ~800 tokens):** Rule files are injected into *every single turn* of an agent session. A 500-line rule file costs 15,000+ input tokens over a 25-turn session. Keep root rules minimal and dense.
+2. **Hierarchical Rule Offloading:** Do not put frontend, backend, and deployment rules into a single giant root file. Offload domain-specific rules to directory-level `AGENTS.md` (e.g. `frontend/AGENTS.md`), which tools discover when working in those subtrees.
+3. **State the *why* for rules:** Models generalize reasons to unstated edge cases. Bare bans ("never do X") invite clever but flawed workarounds.
+4. **Prioritize the non-obvious:** Put commands, gotchas, and quirks that the model cannot deduce from reading package manifests.
+5. **Consolidate hard barriers:** Group non-negotiables under `## Hard Rules` so the model treats them as inviolable guardrails without wading through discursive paragraphs.

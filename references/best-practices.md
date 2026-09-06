@@ -158,3 +158,32 @@ Why: Modern models can over-delegate to subagents when a single fast tool call w
   * Context hydration: `@path` autocompletion and visual evidence pasting (`ctrl+v`).
   * Multiline `$EDITOR` (`ctrl+g`), `Shift+Enter`, `\`, and `esc` cancellation.
   * Subagent fan-out for concurrent sweeps; `-p` for one-shot CLI automation.
+
+---
+
+## 9. Token Efficiency & Cache Hygiene
+
+**The Anti-Slurp Directive (Preventing Tool Blowups):**
+Why: The #1 cause of catastrophic context compaction is an agent running an unconstrained search or viewing giant files, injecting 20,000+ tokens of noise in a single turn.
+- Directives to include:
+  * `Inspect files with line bounds; never dump files exceeding 150 lines without targeting specific ranges.`
+  * `Use bounded search tools (e.g. rg -n -C 1, git diff --stat first, head/tail).`
+
+**Cache Prefix Invariance (KV Cache Optimization):**
+Why: Frontier models (Anthropic, OpenAI, Gemini) cache static prompt prefixes, slashing latency by 80% and cost by 90%. Any dynamic token (timestamp, run ID, branch state) placed at the top invalidates the entire cache for subsequent turns.
+- Invariant structure: `[Static System Instructions & Rules] -> [Tool Definitions] -> [Cached Base Prompt] -> [Dynamic Inputs / User Query at BOTTOM]`.
+- Keep YAML frontmatter static or omit high-frequency timestamps from prompt headers.
+
+**Diff-First Output Contracts:**
+Why: Asking a model to "return the updated file" causes it to output 800 lines of unchanged code, burning output tokens and bloating downstream conversational history.
+- Directive: `Produce minimal, surgical diffs (unified diff format or apply_patch) or targeted line replacements; never echo unchanged code blocks.`
+
+**Reasoning / Thinking Token Damping:**
+Why: Frontier reasoning models (Claude Fable/Opus, GPT-5.6, Gemini Flash Thinking) can expend 4,000+ thinking tokens exploring complex paradigms for one-line mechanical fixes.
+- For bugfixes & mechanical edits: `Commit to the first direct, verifiable solution. Do not evaluate alternative architectural paradigms for this fix.`
+- For Claude Opus 5: Explicitly instruct brevity to curb verbosity tokens.
+
+**Repository Rules Context Tax:**
+Why: `AGENTS.md` and `CLAUDE.md` are injected on *every turn*. Over a 25-turn session, a 500-line rule file costs 15,000+ extra input tokens.
+- Keep root rules concise (<120 lines / ~800 tokens). Push domain-specific rules down into subdirectories or invoke them via on-demand skills.
+

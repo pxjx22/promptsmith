@@ -58,6 +58,8 @@ Then the observable done-criteria as a numbered list.>
 
 <constraints>
 - Stay within <files / modules>. Do not touch <out-of-scope areas>.
+- Anti-slurp: Inspect files with targeted line bounds and bounded tools (`rg -n -C 1`, `git diff --stat`). Never dump whole files >150 lines.
+- Surgical diffs: Apply minimal targeted edits or unified diffs; never echo back unchanged code blocks.
 - Do not refactor unrelated code, add unnecessary abstractions, or create
   unprompted documentation/scratch files in the repo root.
 - Implement a general solution; do not hardcode logic to pass test fixtures.
@@ -75,7 +77,7 @@ Then the observable done-criteria as a numbered list.>
 </verification>
 
 <output>
-<What you want back: summary of changes, diff/files touched, test outcomes.>
+<What you want back: summary of changes, diff/files touched, test outcomes. Do not echo full unmodified files.>
 </output>
 ```
 
@@ -106,6 +108,7 @@ Investigate the incident and produce a findings report addressing:
 
 <constraints>
 - STRICTLY READ-ONLY. Do not modify files, restart services, alter permissions, or run destructive commands.
+- Anti-slurp: Filter log searches (`rg -n`, `journalctl -n 50`, `head/tail`); never dump unconstrained logs exceeding 100 lines into context.
 - Verify assumptions against logs, file timestamps, audit trails, and command histories before drawing conclusions.
 - If you notice unexpected state, record it explicitly rather than attempting an inline fix.
 </constraints>
@@ -137,6 +140,8 @@ Fix the bug where <symptom occurs under condition>.
 
 <constraints>
 - Minimal diff: fix the root cause without refactoring surrounding code or altering public API signatures.
+- Anti-slurp: Inspect suspected files using targeted line bounds; never dump full files.
+- Thinking damping: Commit to the first direct, verifiable root-cause fix. Avoid evaluating divergent architectural paradigms.
 - Do not add broad try/catch blocks or silent fallbacks that swallow errors.
 - Ensure the fix solves the general problem, not just the isolated repro case.
 </constraints>

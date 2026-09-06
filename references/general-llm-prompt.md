@@ -163,19 +163,54 @@ Step 2 (Analysis): Apply those principles directly to the specific scenario in {
 </input>
 ```
 
+### Pattern D: Prompt Compressor & Token Minifier
+Use for auditing and compressing bloated prompts, system instructions, or briefs (targeting 40%–60% token reduction).
+
+```markdown
+<role>
+You are an expert prompt engineer and LLM token optimization specialist.
+</role>
+
+<context>
+The user provides an existing prompt, system rule file, or coding brief that consumes excessive context tokens.
+Your objective is to minify the prompt while retaining 100% of its operational constraints, safety boundaries, and task objectives.
+</context>
+
+<instructions>
+Minify the target prompt according to these strict rules:
+1. Dead weight pruning: Remove conversational greetings, generic filler ("You are an AI that strives to be helpful"), and redundant restatements of model defaults.
+2. Structural flattening: Convert dense narrative prose into high-density bullet tables or compact XML.
+3. Pointer substitution: In coding briefs, point at files/configs (`@Cargo.toml`, `@src/`) instead of summarizing them.
+4. Positive constraint consolidation: Consolidate scattered prohibitions into unified, bounded rules.
+5. Anti-slurp & Diff enforcement: Inject bounded tool directives and diff-first output contracts.
+6. Cache stabilization: Ensure static instructions are at the top and dynamic variables are at the bottom.
+</instructions>
+
+<input>
+{{BLOATED_PROMPT}}
+</input>
+
+<output_format>
+Return strictly:
+1. The minified prompt in a fenced code block.
+2. A single-line token delta: `~<before> → ~<after> tokens (-<pct>%), estimated 20-turn context savings: -<tax> tokens`.
+Do not include conversational preamble or commentary.
+</output_format>
+```
+
 ---
 
 ## Sampling Parameters Recommendation
 
 Include recommended sampling parameters in the prompt metadata:
-- **Code, Math, Logic, Extraction, JSON Schema:** `temperature: 0.0` or `0.2` (greedy decoding for consistency and structural guarantees).
+- **Code, Math, Logic, Extraction, JSON Schema, Compression:** `temperature: 0.0` or `0.2` (greedy decoding for consistency and structural guarantees).
 - **Writing, Synthesis, Ideation:** `temperature: 0.7 - 0.9`, `top_p: 0.9` (lexical diversity and creative variation).
 
 ---
 
-## Prompt Improvement & Critique Rubric
+## Prompt Improvement & Critique Rubric (7 Pillars)
 
-When performing an *improve* run on an existing prompt, evaluate it across these 6 pillars:
+When performing an *improve* or *compress* run on an existing prompt, evaluate it across these 7 pillars:
 
 1. **Clarity & Success Metric:** Is the goal explicit? Is "done" or "high quality" defined rather than assumed?
 2. **Information Ordering & Caching:** Are reference documents/data placed *before* instructions? Is static context preserved at the root?
@@ -183,3 +218,4 @@ When performing an *improve* run on an existing prompt, evaluate it across these
 4. **Structural Delimiters:** Are sections cleanly separated with XML-style tags (`<instructions>`, `<context>`, `<output_format>`)?
 5. **Examples & Class Balance:** Are 3–5 diverse examples included with balanced classes and varied label sequences?
 6. **Output Rigor & Preamble Control:** Is the output shape airtight? Are conversational preambles ("Sure, here is...") eliminated?
+7. **Token Efficiency & Context Hygiene:** Are anti-slurp bounds enforced? Are dynamic timestamps removed from cached prefixes? Are outputs diff-first? Is the prompt density maximized (no narrative fluff)?
