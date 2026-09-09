@@ -32,8 +32,11 @@ each with a recommended default.
    be explicitly barred?
 6. **Verification** — how does the agent confirm it worked? Existing test
    suite, a new test, a build, a manual check, a script to run?
-7. **Action stance** — implement directly, or investigate and propose a
-   plan first for review (explore → plan → execute)?
+7. **Action stance (Directives vs. Inquiries)** — implement directly, or investigate and propose a
+   plan first for review (explore → plan → execute)? (*Harness note for agy / Gemini CLI:* Gemini models
+   assume all turns are read-only Inquiries unless prompted with unambiguous imperative verbs like `implement`, `fix`, or `modify`;
+   write explicit action directives and done criteria to avoid the agent stalling in advisory mode.)
+8. **Tool boundaries & gating** — raw bash vs dedicated harness tools? Should hard-to-reverse actions (destructive git, external calls) be gated behind interactive approval?
 
 (Target harness is resolved before this pool, not inside it — see above.)
 
@@ -46,7 +49,8 @@ You are an autonomous engineer working in <project / stack>. <One line on what t
 
 <context>
 <Relevant background: where code lives, build/test tooling, domain invariants.
-Point at files rather than pasting them unless short.>
+Point at files rather than pasting them unless short.
+Keep static invariants here at the top to preserve prompt cache prefixes.>
 </context>
 
 <task>
@@ -58,6 +62,7 @@ Then the observable done-criteria as a numbered list.>
 
 <constraints>
 - Stay within <files / modules>. Do not touch <out-of-scope areas>.
+- Tool boundaries: Use dedicated file-reading/editing tools over raw shell redirection (`cat > file`) to allow harness staleness checks.
 - Anti-slurp: Inspect files with targeted line bounds and bounded tools (`rg -n -C 1`, `git diff --stat`). Never dump whole files >150 lines.
 - Surgical diffs: Apply minimal targeted edits or unified diffs; never echo back unchanged code blocks.
 - Do not refactor unrelated code, add unnecessary abstractions, or create

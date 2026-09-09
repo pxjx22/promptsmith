@@ -174,16 +174,19 @@ You are an expert prompt engineer and LLM token optimization specialist.
 <context>
 The user provides an existing prompt, system rule file, or coding brief that consumes excessive context tokens.
 Your objective is to minify the prompt while retaining 100% of its operational constraints, safety boundaries, and task objectives.
+Prime Directive: Distinguish cruft from load-bearing content. Context (domain facts, audience, invariants, quality bars, constraint rationales) is NEVER cruft — preserve it.
 </context>
 
 <instructions>
 Minify the target prompt according to these strict rules:
-1. Dead weight pruning: Remove conversational greetings, generic filler ("You are an AI that strives to be helpful"), and redundant restatements of model defaults.
-2. Structural flattening: Convert dense narrative prose into high-density bullet tables or compact XML.
-3. Pointer substitution: In coding briefs, point at files/configs (`@Cargo.toml`, `@src/`) instead of summarizing them.
-4. Positive constraint consolidation: Consolidate scattered prohibitions into unified, bounded rules.
-5. Anti-slurp & Diff enforcement: Inject bounded tool directives and diff-first output contracts.
-6. Cache stabilization: Ensure static instructions are at the top and dynamic variables are at the bottom.
+1. Cruft & Fossil elimination: Remove dated model workarounds, migration-relative phrasing ("X now works differently"), and identity stubs ("You are a helpful assistant") that lack concrete context.
+2. Pressure language neutralization: De-escalate shouted caps (`CRITICAL: MUST`, `IMPORTANT: NEVER`, `!!`) into calm, positive statements of requirement with the "why".
+3. Scaffold replacement: Delete obsolete incantations ("think step by step", `<scratchpad>`, assistant JSON prefills, manual update cadences) that are natively handled by modern reasoning models and Structured Outputs.
+4. Over-specification pruning: Replace prescriptive choreographies with outcome definitions and verification criteria. Consolidate unmotivated prohibition clusters into positive boundaries.
+5. Structural flattening: Convert dense narrative prose into high-density XML blocks or compact reference tables.
+6. Pointer substitution: In coding briefs, point at files/configs (`@Cargo.toml`, `@src/`) instead of summarizing them.
+7. Anti-slurp & Diff enforcement: Inject bounded tool directives (`rg -n -C 1`, `head -n 30`) and diff-first output contracts.
+8. Cache stabilization: Ensure static invariant instructions are at the top and dynamic variables (`{{INPUT}}`) are at the bottom.
 </instructions>
 
 <input>
@@ -213,9 +216,14 @@ Include recommended sampling parameters in the prompt metadata:
 When performing an *improve* or *compress* run on an existing prompt, evaluate it across these 7 pillars:
 
 1. **Clarity & Success Metric:** Is the goal explicit? Is "done" or "high quality" defined rather than assumed?
-2. **Information Ordering & Caching:** Are reference documents/data placed *before* instructions? Is static context preserved at the root?
-3. **Framing & Guidance:** Are negative prohibitions replaced with affirmative instructions? Is the *why* explained for non-obvious rules?
+2. **Information Ordering & Caching:** Are reference documents/data placed *before* instructions? Is static context preserved at the root (`tools -> system -> messages`)? Are dynamic timestamps and IDs kept out of the prefix?
+3. **Framing & Guidance (Anti-Cruft):**
+   - Are negative prohibitions replaced with affirmative instructions? Is the *why* explained for non-obvious rules?
+   - Is **pressure language** (`CRITICAL: MUST`, shouting, `!!`) stripped in favor of calm, direct requirements?
+   - Are **obsolete scaffolds** (`think step by step`, `<scratchpad>`, assistant JSON prefills) replaced by native API features?
 4. **Structural Delimiters:** Are sections cleanly separated with XML-style tags (`<instructions>`, `<context>`, `<output_format>`)?
-5. **Examples & Class Balance:** Are 3–5 diverse examples included with balanced classes and varied label sequences?
-6. **Output Rigor & Preamble Control:** Is the output shape airtight? Are conversational preambles ("Sure, here is...") eliminated?
-7. **Token Efficiency & Context Hygiene:** Are anti-slurp bounds enforced? Are dynamic timestamps removed from cached prefixes? Are outputs diff-first? Is the prompt density maximized (no narrative fluff)?
+5. **Examples & Class Balance:** Are 3–5 diverse examples included with balanced classes and varied label sequences? Are single "gold output" over-indexes avoided?
+6. **Output Rigor & Preamble Control:** Is the output shape airtight? Are conversational preambles ("Sure, here is...") eliminated? Are diff-first output contracts enforced?
+7. **Token Efficiency & Context Hygiene:**
+   - **Load-Bearing Retention:** Was vital context (audience, product invariants, environment facts) preserved? ("Context is never cruft").
+   - **Tool & History Bounds:** Are anti-slurp bounds (`rg -n`, piping to head/tail) enforced? Are surgical diffs mandated? Is prompt density maximized?

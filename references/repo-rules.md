@@ -10,15 +10,22 @@ safety boundaries, and non-obvious environment gotchas.
 
 ## Tool Discovery Matrix
 
-| File | Target Tools | Discovery & Scope |
-| :--- | :--- | :--- |
-| **`AGENTS.md`** | Codex, agy, Claude Code | Hierarchical (root -> cwd). Universal standard for multi-tool setups. |
-| **`CLAUDE.md`** | Claude Code | Walked up to project root. Checked into repo. |
-| **`GEMINI.md`** | Antigravity (agy) | Walked up to repo root or workspace settings. |
+| File | Target Tools | Discovery & Scope | Precedence Hierarchy |
+| :--- | :--- | :--- | :--- |
+| **`AGENTS.md`** | Codex, agy, Claude Code | Hierarchical (root -> cwd). Universal standard for multi-tool setups. | Subdirectory > Root |
+| **`CLAUDE.md`** | Claude Code | Walked up to project root. Checked into repo. | Root (`CLAUDE.md`) |
+| **`GEMINI.md`** | Antigravity (agy), Gemini CLI | Walked up to repo root, subdirectories, or global `~/.gemini/GEMINI.md`. | Subdirectories > Workspace Root > Extensions > Global (`~/.gemini/`) |
+| **`PLANS.md`** | Codex, agy | Referenced in `AGENTS.md` or `.planning/`. Living ExecPlan for multi-hour autonomy. | Working Plan > Root Guidelines |
+| **`DEEPSEEK.md` / `AGENTS.md`** | DeepSeek (V3/R1 via Cline, Roo, SGLang) | Root or user prompt injection. 64-token boundary alignment. | User Turn Envelope (R1) / Root System Prompt (V3) |
+
+> **Context Precedence & Override Boundaries:**
+> - **Google Gemini / agy:** Contextual instructions override default operational behaviors (e.g. style, architectural conventions, tool choices) defined in system prompts, but **cannot** override Core Mandates regarding safety, security, and agent integrity.
+> - **OpenAI / Codex:** In modern reasoning models (o1/o3/GPT-5+), instructions must be passed via `developer` role messages rather than legacy `system` roles to maintain steering authority over user turns and prevent prompt injection. Multi-step projects stay grounded when pairing `AGENTS.md` with a self-contained ExecPlan (`PLANS.md`).
+> - **DeepSeek:** For `deepseek-reasoner` (R1), bundle repository rules directly into user turns (Zero System Prompt contract); for `deepseek-chat` (V3), use root system prompts. Maintain byte-for-byte static prefixes aligned to 64-token blocks for API caching.
 
 ## Question Pool (at most 4, one round)
 
-1. **Target file & tools** — `AGENTS.md` (cross-tool), `CLAUDE.md` (Claude Code only), or `GEMINI.md` (agy)?
+1. **Target file & tools** — `AGENTS.md` (cross-tool), `CLAUDE.md` (Claude Code only), or `GEMINI.md` (agy / Gemini CLI)?
 2. **Core stack & verification commands** — Primary language, build command, test command, and linter?
 3. **Hard safety rules** — What actions must NEVER be run without explicit confirmation (destructive git, firewall, remote SSH, migrations)?
 4. **Environment gotchas & quirks** — Aliased tools (e.g. `sed` -> `sd`), OS-specific service names (Arch `sshd` vs Debian `ssh`), hardware hazards, or strict formatting constraints?
@@ -49,6 +56,7 @@ safety boundaries, and non-obvious environment gotchas.
 - <Tool substitution: e.g., sed is sd on this box; use /usr/bin/sed for scripts.>
 - <Platform differences: e.g., Arch uses sshd.service, Debian uses ssh.service.>
 - <Kernel or hardware traps: e.g., avoid bare sensors calls, ASPM bugs.>
+- <Model quirks: never add trailing space after "Assistant:" in DeepSeek prompt templates; enforce temperature=0.6 for R1 reasoning.>
 - <Date or serialization formats: e.g., timestamps MUST be YYYY-MM-DD HH:MM:SS.>
 
 ## Coding Invariants
@@ -56,6 +64,37 @@ safety boundaries, and non-obvious environment gotchas.
 - Error handling: Propagate errors explicitly; no broad try/catch or silent fallbacks.
 - Architecture: Prefer minimal dependencies and reuse existing helpers in `<path>`.
 - Style: Match existing repo patterns; avoid unnecessary abstractions.
+```
+
+## Template: Antigravity / Gemini CLI `GEMINI.md`
+
+```markdown
+# <Project / System Name>
+
+<1–2 sentences: architectural purpose, primary language/runtime, and environment.>
+
+## Engineering Standards
+
+- **Directives vs. Inquiries:** Treat requests without explicit action verbs as Inquiries (analysis only); never modify files until an unambiguous Directive is given.
+- **Empirical Reproduction:** For bugfixes, reproduce the failure with a new test case or script before applying fixes.
+- **Type Safety & Integrity:** Do not use suppressions (`@ts-ignore`, linter disable comments, unchecked casts) or reflection hacks; write idiomatic type guards and explicit interfaces.
+- **Post-Edit Silence:** Do not echo full files or provide verbose summaries after edits unless explicitly requested.
+
+## Verification & Workflow
+
+- Test command: `<cmd>` (run and verify passes after every change).
+- Build & Lint: `<cmd>`.
+- Plan Artifacts: Write complex plans to `<brain>/<session>/` or `.gemini/plans/` rather than dumping to active chat.
+
+## Subagent Delegation Mandates
+
+- Delegate repetitive batch tasks (>3 files) or high-volume commands (full test suites, builds) to background sub-agents to preserve parent context tokens.
+- NEVER spawn parallel sub-agents that mutate the same files or shared resources.
+
+## Git Protocol
+
+- Do not stage or commit without explicit instructions; never use `git add .` or `git add -A`.
+- Inspect state with `git status && git diff HEAD && git log -n 3`. Propose commit messages focusing on *why*.
 ```
 
 ## Best Practices & Context Tax Discipline

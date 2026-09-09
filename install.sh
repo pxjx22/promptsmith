@@ -16,7 +16,7 @@ DESTS=(
   "${HOME}/.gemini/config/skills/promptsmith"
 )
 
-echo "=== Promptsmith Installer (v2.1.0) ==="
+echo "=== Promptsmith Installer (v2.2.0) ==="
 echo "Source: $SCRIPT_DIR"
 echo
 

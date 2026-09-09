@@ -1,0 +1,15 @@
+# Scraped repositories (heavy vendor clones)
+scrapes/*/
+
+# Python cache & virtual environments
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+.pytest_cache/
+
+# OS & Editor cruft
+.DS_Store
+*.swp
+*.swo
+*~

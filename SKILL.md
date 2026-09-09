@@ -2,7 +2,7 @@
 name: promptsmith
 description: Craft or improve a prompt for an LLM or coding agent following prompt-engineering best practices. Use this skill when the user explicitly asks to write, draft, refine, or critique a prompt (e.g. `/promptsmith`, `$promptsmith`, or "help me write a prompt for…"). Not for answering the underlying task itself.
 metadata:
-  version: 2.1.0
+  version: 2.2.0
 ---
 
 # Promptsmith
@@ -68,17 +68,18 @@ adjustments:
 - **Codex (GPT-5.6 series: terra / sol):** Lean into senior-engineer autonomy; use
   natural 1–2 sentence preambles without rigid upfront plans that cause early stopping;
   enforce solver tools (`rg`, `git`, `apply_patch`) and strict error handling; protect dirty worktrees.
-- **agy (Antigravity 2.0 / Gemini 3.8):** Verification loop is primary; explore -> plan artifact -> execute;
-  hydrate with `@path` and pasted media (`ctrl+v`); parallel background subagent fan-out for broad sweeps.
+- **agy & Gemini CLI (Antigravity 2.0 / Gemini 3.8):** Directives mandate (imperative action verbs to avoid read-only inquiry mode);
+  verification loop is primary; explore -> plan artifact -> execute; hydrate with `@path` and pasted media (`ctrl+v`);
+  sub-agents as context compressors (batch tasks >3 files, verbose test/build runs); strict post-edit silence.
 
 **For an Improve or Compress run:** evaluate the draft against the 7-pillar rubric:
 1. Goal & Done-Criteria
 2. Information Hierarchy & XML Framing (data *before* instructions)
-3. Positive Framing & Rationale
-4. Guardrails (scope ceiling, anti-gaming, no file sprawl)
+3. Positive Framing & Rationale (strip shouting/pressure language; explain the "why")
+4. Guardrails (scope ceiling, anti-gaming, no file sprawl, load-bearing context retention)
 5. Grounding & Verification Loop
-6. Target Harness Alignment
-7. Token Efficiency & Cache Hygiene (anti-slurp limits, prefix stability, diff output, thinking damping)
+6. Target Harness & Tool Surface Alignment (dedicated tools for gating/staleness vs. shell for breadth)
+7. Token Efficiency & Cache Hygiene (anti-slurp limits, wire prefix stability, diff output, thinking damping)
 
 ### 4. Deliver (Ultra-Terse Default)
 
@@ -133,9 +134,14 @@ To preserve session context tokens, delivery is ultra-terse by default:
   unrelated code", "do not create unprompted scratch/summary files in root",
   and "confirm before destructive or hard-to-reverse actions".
 - Guard against test-gaming: implement general solutions for all valid inputs.
+- Anti-Cruft & Framing Hygiene:
+  * Strip pressure language: eliminate shouted caps (`CRITICAL: MUST`, `IMPORTANT: NEVER`, `!!`) and anxious trait claims; state requirements calmly with the "why".
+  * Retire obsolete scaffolds: remove "think step by step", `<scratchpad>`, assistant JSON prefills, and update cadences in favor of native thinking and Structured Outputs.
+  * Context is never cruft: preserve audience, environment invariants, and quality bars when minifying.
 - Token Efficiency & Cache Hygiene:
+  * Wire cache order: `tools -> system -> messages`. Keep static invariants at the top; place dynamic inputs/variables at the prompt tail.
+  * Mid-conversation operator updates: use `role: "system"` inside `messages[]` to update state without busting cached prefixes.
   * Anti-slurp bounds: enforce line limits and bounded tool commands (e.g. `rg -n -C 1`, no dumping files >150 lines).
-  * Cache prefix stability: keep invariant instructions at the top; place dynamic inputs/variables at the prompt tail.
   * Diff-first contracts: require patch/diff output formats rather than full-file echoes.
   * Overthinking damping: on mechanical bugfixes, instruct models to commit to the direct verifiable solution.
 

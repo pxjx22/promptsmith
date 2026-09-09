@@ -161,7 +161,7 @@ Promptsmith includes model-specific calibration notes in [`references/harness-no
 
 ```
 promptsmith/
-├── SKILL.md                          # Master skill orchestrator & entrypoint (v2.1.0)
+├── SKILL.md                          # Master skill orchestrator & entrypoint (v2.2.0)
 ├── install.sh                        # Cross-harness installer and syncer
 ├── LICENSE                           # MIT License
 ├── README.md                         # Documentation & usage guide
