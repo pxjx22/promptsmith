@@ -203,6 +203,10 @@ Why: Modern models can over-delegate to subagents when a single fast tool call w
   * 4-Element Task Framework: structure briefs with Goal, Context, Constraints, and Done When (observable test verification).
   * Sampling: $T=1.0$ for reasoning search; do not micromanage with manual CoT incantations.
   * Streaming deltas: isolate `delta.reasoning_content` from `delta.content` to keep tool call buffers clean.
+- **OpenCode (TUI & headless runner):**
+  * Dual Discovery: slash commands in `~/.config/opencode/commands/` (`/promptsmith`) and skills via `~/.config/opencode/skills/`.
+  * Structure briefs with `<objective>`, `<context>`, `<process>`, and explicit verification commands (`bash`).
+  * Anti-slurp tool bounds (`rg -n -C 1`) and diff-first patch contracts preserve context across auto-compaction sessions.
 
 ---
 

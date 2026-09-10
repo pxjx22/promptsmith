@@ -139,23 +139,11 @@ def find_cruft(content: str, filename: str = "") -> list[dict]:
         (re.compile(r"\b(generateContent|generate_content)\b"), "Legacy Gemini generateContent API", "Migrate to Interactions API (client.interactions.create)"),
     ]
 
-    in_code_block = False
-    code_lang = ""
     for i, line in enumerate(lines):
         line_num = i + 1
         line_s = line.strip()
 
         if line_s.startswith("```") or line_s.startswith("~~~"):
-            if not in_code_block:
-                in_code_block = True
-                code_lang = line_s.lstrip("`~").strip().lower()
-            else:
-                in_code_block = False
-                code_lang = ""
-            continue
-
-        # If inside non-prompt code blocks (e.g. python, bash, json), skip language syntax lines
-        if in_code_block and code_lang in ("python", "py", "bash", "sh", "json", "yaml", "yml", "javascript", "typescript", "ts", "js", "rust", "go", "toml"):
             continue
 
         if is_reference_or_negative_callout(line):
@@ -473,6 +461,8 @@ def normalize_target_model(target_model: str) -> str:
         return "Codex"
     elif norm in ("deepseek", "r1", "v3"):
         return "DeepSeek (V3 / R1)"
+    elif norm in ("opencode", "open-code"):
+        return "OpenCode"
     return target_model.strip()
 
 
@@ -480,9 +470,7 @@ def yaml_scalar(val: str) -> str:
     """Format a string safely for YAML frontmatter scalar values."""
     import json
     clean = val.strip().replace("\r\n", " ").replace("\n", " ")
-    if any(c in clean for c in [":", "#", '"', "'", "{", "}", "[", "]", ",", "*", "&", "!", "|", ">", "%", "@"]):
-        return json.dumps(clean)
-    return clean
+    return json.dumps(clean)
 
 
 def generate_prompt(mode: str, intent: str, target_model: str = "agy (Antigravity 2.0 / Gemini 3.8)") -> str:
@@ -685,6 +673,9 @@ def cmd_eval(args):
     if getattr(args, "files", None):
         paths = []
         for p in args.files:
+            if p in ("-", "--stdin"):
+                paths.append(p)
+                continue
             matches = glob.glob(os.path.expanduser(p))
             if matches:
                 paths.extend(matches)
@@ -699,10 +690,15 @@ def cmd_eval(args):
         all_passed = True
         for path in paths:
             try:
-                with open(path, "r", encoding="utf-8") as f:
-                    content = f.read()
-                print(format_rubric_report(content, filename=path))
-                res = evaluate_rubric(content, filename=path)
+                if path in ("-", "--stdin"):
+                    content = sys.stdin.read()
+                    filename = "<stdin>"
+                else:
+                    with open(path, "r", encoding="utf-8") as f:
+                        content = f.read()
+                    filename = path
+                print(format_rubric_report(content, filename=filename))
+                res = evaluate_rubric(content, filename=filename)
                 if not res["passed"]:
                     all_passed = False
             except Exception as e:
@@ -735,7 +731,7 @@ def main():
     p_gen = subparsers.add_parser("generate", help="Generate a valid prompt template programmatically")
     p_gen.add_argument("--mode", default="brief", choices=["brief", "rules", "general", "compress", "coding-agent-brief", "repo-rules", "general-llm-prompt", "prompt-compressor"], help="Prompt mode (default: brief)")
     p_gen.add_argument("--intent", required=True, help="Intent or task description for the prompt")
-    p_gen.add_argument("--target-model", default="agy (Antigravity 2.0 / Gemini 3.8)", help="Target model / harness (e.g. agy, GLM-5.3, Claude Code, Codex, DeepSeek)")
+    p_gen.add_argument("--target-model", default="agy (Antigravity 2.0 / Gemini 3.8)", help="Target model / harness (e.g. agy, GLM-5.3, Claude Code, Codex, OpenCode, DeepSeek)")
     p_gen.add_argument("-o", "--output", help="Optional output file path")
 
     p_eval = subparsers.add_parser("eval", help="Run automated 7-pillar rubric evals and regression assertions")

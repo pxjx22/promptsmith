@@ -10,7 +10,7 @@ metadata:
 Turn a natural-language description into a well-formed prompt, applying
 established prompt-engineering practice. Works for four target modes:
 
-- **Coding-agent brief** — a task for Claude Code, Codex, agy, or similar
+- **Coding-agent brief** — a task for Claude Code, Codex, agy, OpenCode, or similar
   (features, forensics/investigations, bugfixes, audits, refactors, frontend).
 - **Repository rules & system instructions** — persistent instructions for
   agents (`AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, or custom system prompts).

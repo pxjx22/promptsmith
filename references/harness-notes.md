@@ -164,6 +164,17 @@ Antigravity and Gemini CLI operate with local tooling, TUI interactive buffers, 
 - **Streaming Delta Contract:**
   * SSE streams separate reasoning tokens (`delta.reasoning_content`) from user-facing text (`delta.content`). Outer harnesses must isolate reasoning tokens to prevent polluting tool parameter buffers.
 
+## OpenCode (TUI & headless agent runner)
+
+- **Slash command & skill dual discovery:**
+  * OpenCode discovers slash commands in `~/.config/opencode/commands/*.md` (invoked directly in TUI as `/promptsmith <args>`).
+  * Agent Skills plugin (`opencode-agent-skills`) discovers reusable skills from `~/.config/opencode/skills/<skill>/SKILL.md` and `~/.opencode/skills/<skill>/SKILL.md`.
+- **Tool and Execution Surface:**
+  * OpenCode natively executes bash commands, structured file edits, and LSP symbol inspections.
+  * Directives vs Inquiries: Structure prompts with explicit `<objective>`, `<context>`, `<process>`, and concrete verification steps.
+- **Compaction & Session Pruning:**
+  * OpenCode auto-compactor manages tokens dynamically (`preserve_recent_tokens`). Keep static repository rules and invariant files top-loaded to preserve session coherence.
+
 ## Other / unknown harness
 
 Cursor, Cline, Aider, Copilot, a raw API loop, or anything unnamed: write to the common core above. The per-harness sections mostly reduce to two questions — **(a) does this harness want progress narration in the prompt, and (b) how autonomous is its default posture?** If you can't answer those, assume "no extra narration" and "moderately autonomous" and move on.

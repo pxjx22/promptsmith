@@ -105,7 +105,7 @@ def evaluate_rubric(content: str, filename: str = "") -> dict:
     has_harness_alignment = any(kw in lower for kw in [
         "harness", "tool boundaries", "dedicated tool", "staleness", "directive", 
         "sub-agent", "subagent", "claude code", "codex", "agy", "antigravity", "gemini",
-        "glm", "glm-5.3", "z.ai"
+        "glm", "glm-5.3", "z.ai", "opencode"
     ])
     p6_passed = has_harness_alignment or bool(re.search(r"target_model:\s*\w+", content))
     pillars["6_target_harness_alignment"] = {
@@ -460,7 +460,13 @@ def main():
         # Evaluate provided files
         all_passed = True
         for arg in sys.argv[1:]:
-            if os.path.exists(arg):
+            if arg in ("-", "--stdin"):
+                content = sys.stdin.read()
+                print(format_rubric_report(content, filename="<stdin>"))
+                res = evaluate_rubric(content, filename="<stdin>")
+                if not res["passed"]:
+                    all_passed = False
+            elif os.path.exists(arg):
                 with open(arg, "r", encoding="utf-8") as f:
                     content = f.read()
                 print(format_rubric_report(content, filename=arg))
