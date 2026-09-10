@@ -31,10 +31,71 @@ def count_tokens(text: str) -> tuple[int, int]:
     return len(ENC_CL100K.encode(text)), len(ENC_O200K.encode(text))
 
 
+def is_reference_or_negative_callout(line: str) -> bool:
+    """
+    Distinguish actual prompt instructions from reference documentation citations,
+    markdown tables (|), headings (#), blockquotes (>), negative-example callouts,
+    and meta-guidelines prescribing the elimination of anti-patterns.
+    """
+    line_s = line.strip()
+    if not line_s:
+        return True
+
+    # 1. Markdown tables (| col | col |)
+    if line_s.startswith("|"):
+        return True
+
+    # 2. Markdown headings (# Heading)
+    if line_s.startswith("#"):
+        return True
+
+    # 3. Blockquotes (> quote)
+    if line_s.startswith(">"):
+        return True
+
+    # 4. Explicit negative-example callouts
+    if re.match(
+        r"^(\s*[-*]|\d+\.)?\s*\*{0,2}(weak|bad|anti-pattern|negative|avoid|instead of)\*{0,2}:",
+        line_s,
+        re.IGNORECASE,
+    ):
+        return True
+
+    # 5. Rubric evaluation questions / checklist items
+    if re.match(
+        r"^(\s*[-*]|\d+\.)?\s*(is|are)\s+.*\b(stripped|replaced|eliminated|removed|avoided)\b",
+        line_s,
+        re.IGNORECASE,
+    ):
+        return True
+
+    # 6. Meta-documentation prescribing removal, de-escalation, or avoidance of patterns
+    meta_patterns = [
+        r"\b(strip|stripping|stripped)\b.*\b(pressure language|scaffolds?|shouted|caps)\b",
+        r"\b(retire|retiring|retired)\b.*\b(scaffolds?|incantations?)\b",
+        r"\b(eliminate|eliminating|delete|deleting|remove|removing|omit|omitting)\b.*\b(shouted|scaffolds?|incantations?|pressure language)\b",
+        r"\b(de-escalate|deescalate)\b",
+        r"\bpressure language neutralization\b",
+        r"\bscaffold replacement\b",
+        r"\bdo not use\s+[`\"'].*[`\"']",
+        r"\bnever prompt\b.*\bwith\b",
+        r"\bdeprecated models?.*should never be targeted\b",
+        r"^\s*[-*]\s*\*\*omit pressure language:\*\*",
+        r"^\s*[-*]\s*rule:\s*never prompt\b",
+    ]
+    for mp in meta_patterns:
+        if re.search(mp, line_s, re.IGNORECASE):
+            return True
+
+    return False
+
+
 def find_cruft(content: str, filename: str = "") -> list[dict]:
     """
     Find specific dated instructions, pressure language, and obsolete scaffolds
     based on the Anthropic 2026 Prompt Audit methodology.
+    Distinguishes actual prompt instructions from reference documentation citations,
+    markdown tables, negative examples, and code blocks.
     """
     findings = []
     lines = content.splitlines()
@@ -77,12 +138,18 @@ def find_cruft(content: str, filename: str = "") -> list[dict]:
         line_num = i + 1
         line_s = line.strip()
 
-        if line_s.startswith("```"):
+        if line_s.startswith("```") or line_s.startswith("~~~"):
             in_code_block = not in_code_block
+            continue
+
+        if in_code_block:
             continue
 
         # Skip scanning promptsmith documentation headers
         if line_s.startswith(">") and "synthesized from" in line_s:
+            continue
+
+        if is_reference_or_negative_callout(line):
             continue
 
         # Check pressure language
@@ -382,6 +449,215 @@ def cmd_tax(args):
     print(f"200k Context Consumption:          {utilization_200k:.1f}% ({status})")
 
 
+def generate_prompt(mode: str, intent: str, target_model: str = "agy (Antigravity 2.0 / Gemini 3.8)") -> str:
+    """Generate a valid, frontmattered prompt adhering to the 7-pillar rubric."""
+    import datetime
+    today = datetime.date.today().strftime("%Y-%m-%d")
+
+    norm_mode = mode.lower().strip()
+    if norm_mode in ("brief", "coding-agent-brief", "coding"):
+        canonical_mode = "coding-agent-brief"
+    elif norm_mode in ("rules", "repo-rules"):
+        canonical_mode = "repo-rules"
+    elif norm_mode in ("general", "general-llm-prompt"):
+        canonical_mode = "general-llm-prompt"
+    elif norm_mode in ("compress", "prompt-compressor"):
+        canonical_mode = "prompt-compressor"
+    else:
+        canonical_mode = "coding-agent-brief"
+
+    if canonical_mode == "coding-agent-brief":
+        return f"""---
+created: {today}
+mode: coding-agent-brief
+target_model: {target_model}
+intent: {intent}
+---
+
+<role>
+You are an autonomous senior software engineer working in this codebase.
+</role>
+
+<context>
+Target codebase: Current workspace
+Task context: {intent}
+Keep static invariants here at the top to preserve prompt cache prefixes.
+</context>
+
+<task>
+{intent}
+
+Observable Done Criteria:
+1. Implement the requested changes addressing the core intent cleanly.
+2. Ensure full test coverage and passing verification checks.
+3. Keep changes minimal, preserve existing conventions, and maintain backward compatibility.
+</task>
+
+<constraints>
+- Scope ceiling: Confine modifications strictly to files and modules in scope. Do not refactor unrelated code.
+- Anti-slurp: Inspect files with targeted line bounds (`rg -n -C 1`, `git diff --stat`). Never dump whole files >150 lines.
+- Surgical diffs: Apply minimal targeted edits or unified diffs; never echo back unchanged code blocks.
+- Tool boundaries: Use dedicated file-reading/editing tools over raw shell redirection (`cat > file`) to allow harness staleness checks.
+- Harness Directives Mandate: Treat this brief as an imperative Directive; proceed directly to exploration, plan artifact generation, and implementation.
+- Post-edit silence: After code modifications, run tests silently without echoing verbose test suite logs or full file contents.
+</constraints>
+
+<verification>
+Run verification commands and confirm clean exit code 0:
+1. Run existing test suite for modified components.
+2. Verify linting, formatting, and static analysis checks pass without errors.
+</verification>
+
+<output>
+Provide a concise summary of changes, surgical diff of modifications, and verification test outcomes. Do not echo full unmodified files.
+</output>
+"""
+
+    elif canonical_mode == "repo-rules":
+        return f"""---
+created: {today}
+mode: repo-rules
+target_model: {target_model}
+intent: {intent}
+---
+
+<role>
+You are an autonomous engineering assistant operating within this repository.
+</role>
+
+<context>
+Repository context: {intent}
+Standards: Modern, minimal, well-tested production patterns.
+Preserve static repository guidelines at the root to maintain prompt cache prefix invariance.
+</context>
+
+<guidelines>
+1. Code Style: Follow idiomatic conventions and maintain consistent architecture.
+2. Safety Invariants: Never break existing public APIs or introduce security regressions.
+3. Minimal Footprint: Prefer surgical edits over sprawling rewrites.
+</guidelines>
+
+<constraints>
+- Anti-slurp: Bounded inspections only (`rg -n -C 1`, line limits). Never dump whole files >150 lines.
+- Surgical diffs: Produce minimal unified diffs; never echo unchanged code blocks.
+- Verification: Always run local test commands before reporting completion.
+- Post-edit silence: Execute test verification quietly without verbose full-file dumps.
+</constraints>
+
+<verification>
+Run local test and lint checks to confirm clean exit status:
+1. Test command: Run relevant project tests.
+2. Lint command: Verify zero lint and type errors.
+</verification>
+"""
+
+    elif canonical_mode == "general-llm-prompt":
+        return f"""---
+created: {today}
+mode: general-llm-prompt
+target_model: {target_model}
+intent: {intent}
+---
+
+<context>
+Task context: {intent}
+Keep background facts and reference material here at the top for prompt cache stability.
+</context>
+
+<instructions>
+Execute the requested objective with precision and structured clarity.
+
+Observable Done Criteria:
+1. Address the primary intent directly without conversational fluff.
+2. Structure the output according to the defined format delimiters.
+3. Validate all outputs against stated constraints.
+</instructions>
+
+<constraints>
+- Anti-cruft: State requirements calmly with rationale; do not use shouting caps or dated scaffolds.
+- Conciseness: Deliver dense, high-signal information without filler phrases.
+- Structured output: Adhere strictly to the requested format delimiters.
+</constraints>
+
+<output_format>
+Present output directly within clean structural delimiters without conversational preamble or hedging.
+</output_format>
+"""
+
+    elif canonical_mode == "prompt-compressor":
+        return f"""---
+created: {today}
+mode: prompt-compressor
+target_model: {target_model}
+intent: {intent}
+---
+
+<task>
+Compress and de-cruft the target prompt while preserving 100% of load-bearing context and constraints.
+Target intent: {intent}
+</task>
+
+<compression_directives>
+1. Cruft Elimination: Strip pressure shouting (`CRITICAL: MUST`), obsolete scaffolds (`think step by step`, `<scratchpad>`), and deprecated model versions.
+2. Anti-Slurp & Diff Retention: Preserve bounded file reading directives and diff-first output contracts.
+3. Cache Stability: Ensure frontmatter dates use static `YYYY-MM-DD` format (no dynamic timestamps).
+4. Load-Bearing Retention: Keep domain rules, audience specifications, and constraint rationales intact.
+</compression_directives>
+
+<output_contract>
+Output the compressed prompt in a fenced code block followed by a single-line compression summary:
+`~<orig> → ~<comp> tokens (-<pct>%), estimated 20-turn context savings: -<tax> tokens`
+</output_contract>
+"""
+    return ""
+
+
+def cmd_generate(args):
+    """Headless CLI prompt generation for CI/CD pipelines and scripts."""
+    target_model = getattr(args, "target_model", None) or "agy (Antigravity 2.0 / Gemini 3.8)"
+    prompt_text = generate_prompt(mode=args.mode, intent=args.intent, target_model=target_model)
+    if getattr(args, "output", None):
+        out_path = os.path.expanduser(args.output)
+        parent = os.path.dirname(os.path.abspath(out_path))
+        if parent:
+            os.makedirs(parent, exist_ok=True)
+        with open(out_path, "w", encoding="utf-8") as f:
+            f.write(prompt_text)
+        print(f"Generated prompt written to: {out_path}")
+    else:
+        print(prompt_text, end="")
+
+
+def cmd_eval(args):
+    """Run automated 7-pillar rubric evals, reverse-line parsing, or file evaluations."""
+    try:
+        from eval_rubrics import run_eval_suite, format_rubric_report
+    except ImportError:
+        tools_dir = os.path.dirname(os.path.abspath(__file__))
+        if tools_dir not in sys.path:
+            sys.path.insert(0, tools_dir)
+        from eval_rubrics import run_eval_suite, format_rubric_report
+
+    if getattr(args, "files", None):
+        paths = []
+        for p in args.files:
+            matches = glob.glob(os.path.expanduser(p))
+            if matches:
+                paths.extend(matches)
+            elif os.path.exists(p):
+                paths.append(p)
+        for path in paths:
+            try:
+                with open(path, "r", encoding="utf-8") as f:
+                    content = f.read()
+                print(format_rubric_report(content, filename=path))
+            except Exception as e:
+                print(f"Error evaluating {path}: {e}")
+    else:
+        success = run_eval_suite()
+        sys.exit(0 if success else 1)
+
+
 def main():
     parser = argparse.ArgumentParser(description="Promptsmith Token Audit & Benchmarking Utility")
     subparsers = parser.add_subparsers(dest="command")
@@ -400,6 +676,15 @@ def main():
     p_tax.add_argument("tokens", type=int, help="Number of tokens in prompt")
     p_tax.add_argument("--turns", type=int, default=20, help="Number of session turns (default: 20)")
 
+    p_gen = subparsers.add_parser("generate", help="Generate a valid prompt template programmatically")
+    p_gen.add_argument("--mode", default="brief", choices=["brief", "rules", "general", "compress", "coding-agent-brief", "repo-rules", "general-llm-prompt", "prompt-compressor"], help="Prompt mode (default: brief)")
+    p_gen.add_argument("--intent", required=True, help="Intent or task description for the prompt")
+    p_gen.add_argument("--target-model", default="agy (Antigravity 2.0 / Gemini 3.8)", help="Target model / harness")
+    p_gen.add_argument("-o", "--output", help="Optional output file path")
+
+    p_eval = subparsers.add_parser("eval", help="Run automated 7-pillar rubric evals and regression assertions")
+    p_eval.add_argument("files", nargs="*", help="Optional prompt files to evaluate against 7-pillar rubric")
+
     args = parser.parse_args()
 
     if args.command == "audit" or args.command is None:
@@ -410,6 +695,10 @@ def main():
         cmd_compare(args)
     elif args.command == "tax":
         cmd_tax(args)
+    elif args.command == "generate":
+        cmd_generate(args)
+    elif args.command == "eval":
+        cmd_eval(args)
 
 
 if __name__ == "__main__":
