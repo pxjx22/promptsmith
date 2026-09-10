@@ -436,14 +436,19 @@ def run_eval_suite() -> bool:
 def main():
     if len(sys.argv) > 1 and sys.argv[1] not in ("--test", "-t"):
         # Evaluate provided files
+        all_passed = True
         for arg in sys.argv[1:]:
             if os.path.exists(arg):
                 with open(arg, "r", encoding="utf-8") as f:
                     content = f.read()
                 print(format_rubric_report(content, filename=arg))
+                res = evaluate_rubric(content, filename=arg)
+                if not res["passed"]:
+                    all_passed = False
             else:
                 print(f"File not found: {arg}")
-        return
+                all_passed = False
+        sys.exit(0 if all_passed else 1)
 
     success = run_eval_suite()
     sys.exit(0 if success else 1)

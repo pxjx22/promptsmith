@@ -631,12 +631,12 @@ def cmd_generate(args):
 def cmd_eval(args):
     """Run automated 7-pillar rubric evals, reverse-line parsing, or file evaluations."""
     try:
-        from eval_rubrics import run_eval_suite, format_rubric_report
+        from eval_rubrics import run_eval_suite, evaluate_rubric, format_rubric_report
     except ImportError:
         tools_dir = os.path.dirname(os.path.abspath(__file__))
         if tools_dir not in sys.path:
             sys.path.insert(0, tools_dir)
-        from eval_rubrics import run_eval_suite, format_rubric_report
+        from eval_rubrics import run_eval_suite, evaluate_rubric, format_rubric_report
 
     if getattr(args, "files", None):
         paths = []
@@ -646,13 +646,25 @@ def cmd_eval(args):
                 paths.extend(matches)
             elif os.path.exists(p):
                 paths.append(p)
+            else:
+                print(f"File not found: {p}")
+                sys.exit(1)
+        if not paths:
+            print("No files matched pattern.")
+            sys.exit(1)
+        all_passed = True
         for path in paths:
             try:
                 with open(path, "r", encoding="utf-8") as f:
                     content = f.read()
                 print(format_rubric_report(content, filename=path))
+                res = evaluate_rubric(content, filename=path)
+                if not res["passed"]:
+                    all_passed = False
             except Exception as e:
                 print(f"Error evaluating {path}: {e}")
+                all_passed = False
+        sys.exit(0 if all_passed else 1)
     else:
         success = run_eval_suite()
         sys.exit(0 if success else 1)
