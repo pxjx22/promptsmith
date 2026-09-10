@@ -59,9 +59,9 @@ def is_reference_or_negative_callout(line: str) -> bool:
         return True
 
     # 4. Explicit negative-example callouts
-    # e.g., - Weak: ..., * Bad: ..., - Anti-pattern: ..., Avoid: ...
+    # e.g., - Weak: ..., * Bad: ..., - Anti-pattern: ..., Avoid: ..., # Bad: ..., // Example: ...
     if re.match(
-        r"^(\s*[-*>]|\d+\.)?\s*\*{0,2}(weak|bad|anti-pattern|negative|avoid|instead of)\*{0,2}:",
+        r"^(\s*[-*>]|\d+\.|#|\/\/|\/\*|\*)\s*\*{0,2}(weak|bad|anti-pattern|negative|avoid|instead of|dated|legacy|obsolete|deprecated|example)\*{0,2}:",
         line_s,
         re.IGNORECASE,
     ):
@@ -93,6 +93,27 @@ def is_reference_or_negative_callout(line: str) -> bool:
         if re.search(mp, line_s, re.IGNORECASE):
             return True
 
+    return False
+
+
+def is_code_syntax_or_literal(line_s: str, code_lang: str) -> bool:
+    """
+    Distinguish programming language syntax, variable assignments, regex definitions,
+    and configuration settings from active prompt instructions inside code fences.
+    """
+    if not code_lang or code_lang in ("markdown", "md", "prompt", "text", "txt", "xml"):
+        return False
+    # Code statements: definitions, imports, regex, assertions, assignments
+    if re.match(r"^\s*(def |class |import |from |return |assert |const |let |var |fn |pub |func |package |type )", line_s):
+        return True
+    if re.search(r"re\.(compile|search|match|findall|sub)\b", line_s):
+        return True
+    # Assignment of literal string or pattern
+    if re.match(r"^\s*[a-zA-Z_][a-zA-Z0-9_]*\s*=\s*", line_s):
+        return True
+    # Configuration key-value line (e.g. log_level: CRITICAL, level: "CRITICAL")
+    if re.match(r"^\s*['\"]?[a-zA-Z0-9_.-]+['\"]?\s*:\s*['\"]?[a-zA-Z0-9_.-]+['\"]?\s*$", line_s):
+        return True
     return False
 
 
@@ -139,14 +160,25 @@ def find_cruft(content: str, filename: str = "") -> list[dict]:
         (re.compile(r"\b(generateContent|generate_content)\b"), "Legacy Gemini generateContent API", "Migrate to Interactions API (client.interactions.create)"),
     ]
 
+    in_code_block = False
+    code_lang = ""
     for i, line in enumerate(lines):
         line_num = i + 1
         line_s = line.strip()
 
         if line_s.startswith("```") or line_s.startswith("~~~"):
+            if not in_code_block:
+                in_code_block = True
+                code_lang = line_s.lstrip("`~").strip().lower()
+            else:
+                in_code_block = False
+                code_lang = ""
             continue
 
         if is_reference_or_negative_callout(line):
+            continue
+
+        if in_code_block and is_code_syntax_or_literal(line_s, code_lang):
             continue
 
         # Check pressure language

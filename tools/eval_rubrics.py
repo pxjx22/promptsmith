@@ -444,6 +444,35 @@ def run_eval_suite() -> bool:
         failures.append(f"GLM-5.3 prompt generation test error: {e}")
         print(f"[✗] FAIL: GLM-5.3 Prompt Generation: {e}")
 
+    # --- Test 7: Fenced Code Block Directives vs Benign Code/Config Syntax ---
+    tests_run += 1
+    doc_fenced_directive = """
+```bash
+# CRITICAL: You MUST ALWAYS run this!
+```
+"""
+    doc_benign_code = """
+```python
+pattern = re.compile(r"CRITICAL|MUST")
+log_level = "CRITICAL"
+```
+"""
+    doc_benign_config = """
+```yaml
+logging:
+  level: CRITICAL
+```
+"""
+    f_directive = find_cruft(doc_fenced_directive, filename="fenced_directive.md")
+    f_code = find_cruft(doc_benign_code, filename="benign_code.py")
+    f_config = find_cruft(doc_benign_config, filename="benign_config.yaml")
+
+    if len(f_directive) >= 1 and len(f_code) == 0 and len(f_config) == 0:
+        print("[✓] PASS: Fenced directives audited while benign code/config examples remain clean")
+    else:
+        failures.append(f"Fenced cruft discrimination failed: directive_findings={len(f_directive)}, code_findings={len(f_code)}, config_findings={len(f_config)}")
+        print(f"[✗] FAIL: Fenced Cruft Discrimination: {failures[-1]}")
+
     print("--------------------------------------------------------------------------------")
     if not failures:
         print(f"ALL {tests_run} REGRESSION SUITE CHECKS PASSED WITH ZERO ERRORS.")
