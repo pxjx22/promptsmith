@@ -136,6 +136,17 @@ Promptsmith includes a standalone benchmarking tool [`tools/token_audit.py`](too
 # Audit token counts, hygiene, and 20-turn session context taxes
 ./tools/token_audit.py audit
 
+# Inspect prompt files for dated scaffolds, pressure shouting, or cruft
+./tools/token_audit.py cruft references/*.md SKILL.md
+
+# Headless programmatic prompt generation for CI/CD pipelines
+./tools/token_audit.py generate --mode brief --intent "Fix connection pool race"
+
+# Automated 7-pillar rubric evals and regression suite
+./tools/token_audit.py eval
+# or run standalone:
+./tools/eval_rubrics.py
+
 # A/B comparison between original and compressed prompts
 ./tools/token_audit.py compare original.md compressed.md
 
@@ -168,7 +179,8 @@ promptsmith/
 ├── agents/
 │   └── openai.yaml                   # Codex agent skill definition
 ├── tools/
-│   └── token_audit.py                # Token audit, benchmarking, and comparison CLI
+│   ├── token_audit.py                # Token audit, benchmarking, generator & comparison CLI
+│   └── eval_rubrics.py               # Automated 7-pillar rubric eval runner & regression suite
 └── references/
     ├── best-practices.md             # Core prompt engineering cheatsheet, research & Section 9: Token Hygiene
     ├── coding-agent-brief.md         # Brief templates, anti-slurp bounds & the 5 task archetypes

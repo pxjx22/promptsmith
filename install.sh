@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Promptsmith installer and syncer
-# Installs or syncs Promptsmith across Claude Code, Codex, and Antigravity (agy).
+# Installs or syncs Promptsmith across Claude Code, Codex, Antigravity (agy), and OpenCode.
 
 set -euo pipefail
 
@@ -14,6 +14,8 @@ DESTS=(
   "${HOME}/.claude/skills/promptsmith"
   "${HOME}/.codex/skills/promptsmith"
   "${HOME}/.gemini/config/skills/promptsmith"
+  "${HOME}/.config/opencode/skills/promptsmith"
+  "${HOME}/.opencode/skills/promptsmith"
 )
 
 echo "=== Promptsmith Installer (v2.2.0) ==="
@@ -45,6 +47,39 @@ if [[ -d "${HOME}/.gemini/skills" ]]; then
   echo "  [+] Mirrored to: ${HOME}/.gemini/skills/promptsmith (legacy)"
 fi
 
+# OpenCode slash command (/promptsmith)
+if [[ -d "${HOME}/.config/opencode/commands" || "${1:-}" == "--all" ]]; then
+  "$MKDIR" -p "${HOME}/.config/opencode/commands"
+  cat <<EOF > "${HOME}/.config/opencode/commands/promptsmith.md"
+---
+description: Craft or improve a prompt for an LLM or coding agent following prompt-engineering best practices
+argument-hint: "[--mode <brief|rules|general|compress>] <task or intent>"
+tools:
+  read: true
+  write: true
+  edit: true
+  bash: true
+---
+<objective>
+Invoke Promptsmith to craft, refine, compress, or audit a prompt or agent brief according to Promptsmith's 7-pillar rubric.
+</objective>
+
+<execution_context>
+@\${HOME}/.config/opencode/skills/promptsmith/SKILL.md
+</execution_context>
+
+<context>
+Arguments: \$ARGUMENTS
+</context>
+
+<process>
+Read and follow @\${HOME}/.config/opencode/skills/promptsmith/SKILL.md with \$ARGUMENTS.
+Use the tools and reference guides in \${HOME}/.config/opencode/skills/promptsmith/references/ and \${HOME}/.config/opencode/skills/promptsmith/tools/ to generate, audit, or refine the prompt.
+</process>
+EOF
+  echo "  [+] Installed OpenCode command: ${HOME}/.config/opencode/commands/promptsmith.md"
+fi
+
 echo
 if [[ $installed_count -gt 0 ]]; then
   echo "Done! Installed to $installed_count target harness(es)."
@@ -52,6 +87,7 @@ if [[ $installed_count -gt 0 ]]; then
   echo "  - Claude Code:  /promptsmith"
   echo "  - Codex:        \$promptsmith"
   echo "  - Antigravity:  /promptsmith"
+  echo "  - OpenCode:     /promptsmith"
 else
   echo "No active AI harness directories found in home folder."
   echo "Run with --all to force creation of all target skill directories."

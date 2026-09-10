@@ -10,7 +10,7 @@ metadata:
 Turn a natural-language description into a well-formed prompt, applying
 established prompt-engineering practice. Works for four target modes:
 
-- **Coding-agent brief** — a task for Claude Code, Codex, agy, or similar
+- **Coding-agent brief** — a task for Claude Code, Codex, agy, OpenCode, or similar
   (features, forensics/investigations, bugfixes, audits, refactors, frontend).
 - **Repository rules & system instructions** — persistent instructions for
   agents (`AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, or custom system prompts).
@@ -152,7 +152,8 @@ To preserve session context tokens, delivery is ultra-terse by default:
 - `references/general-llm-prompt.md` — templates (base + JSON schema + triage + prompt-compressor) + question pool + 7-pillar rubric.
 - `references/best-practices.md` — cheatsheet: each principle with rationale and example (including Section 9: Token Efficiency & Cache Hygiene).
 - `references/harness-notes.md` — per-harness conventions & token levers (Claude Code Fable 5.1/Opus 5/Sonnet 5, Codex GPT-5.6, agy Antigravity 2.0 / Gemini 3.8).
-- `tools/token_audit.py` — benchmark and audit utility to measure token counts, session context taxes, and guardrail retention (`audit`, `compare`, `tax`).
+- `tools/token_audit.py` — benchmark, cruft audit, headless generator, and comparison utility (`audit`, `cruft`, `generate`, `compare`, `tax`, `eval`).
+- `tools/eval_rubrics.py` — automated 7-pillar rubric eval runner and OpenAI Evals `cot_classify` reverse-line parsing harness.
 
 Read only the mode reference you need, plus the cheatsheet, plus
 `harness-notes.md` when a coding brief names its target harness.
