@@ -104,7 +104,8 @@ def evaluate_rubric(content: str, filename: str = "") -> dict:
     # Pillar 6: Target Harness & Tool Surface Alignment
     has_harness_alignment = any(kw in lower for kw in [
         "harness", "tool boundaries", "dedicated tool", "staleness", "directive", 
-        "sub-agent", "subagent", "claude code", "codex", "agy", "antigravity", "gemini"
+        "sub-agent", "subagent", "claude code", "codex", "agy", "antigravity", "gemini",
+        "glm", "glm-5.3", "z.ai"
     ])
     p6_passed = has_harness_alignment or bool(re.search(r"target_model:\s*\w+", content))
     pillars["6_target_harness_alignment"] = {
@@ -421,6 +422,27 @@ def run_eval_suite() -> bool:
     else:
         failures.append(f"Promptsmith reference files contain {ref_cruft_total} false-positive cruft findings")
         print(f"[✗] FAIL: Self-Verification: {failures[-1]}")
+
+    # --- Test 6: GLM-5.3 Prompt Generation & Rubric Compliance ---
+    tests_run += 1
+    try:
+        from token_audit import generate_prompt
+        glm_brief = generate_prompt(mode="brief", intent="Implement billing webhook for subscription updates", target_model="GLM-5.3")
+        glm_res = evaluate_rubric(glm_brief, filename="generated_glm_brief.md")
+        if (
+            glm_res["score"] == 7
+            and glm_res["cruft_count"] == 0
+            and "GLM-5.3" in glm_brief
+            and glm_res["hygiene"]["anti_slurp"]
+            and glm_res["hygiene"]["diff_contract"]
+        ):
+            print("[✓] PASS: GLM-5.3 prompt generation and 7-pillar rubric compliance verified")
+        else:
+            failures.append(f"GLM-5.3 prompt generation rubric check failed: score={glm_res['score']}/7, cruft={glm_res['cruft_count']}")
+            print(f"[✗] FAIL: GLM-5.3 Prompt Generation: {failures[-1]}")
+    except Exception as e:
+        failures.append(f"GLM-5.3 prompt generation test error: {e}")
+        print(f"[✗] FAIL: GLM-5.3 Prompt Generation: {e}")
 
     print("--------------------------------------------------------------------------------")
     if not failures:

@@ -34,28 +34,34 @@ def count_tokens(text: str) -> tuple[int, int]:
 def is_reference_or_negative_callout(line: str) -> bool:
     """
     Distinguish actual prompt instructions from reference documentation citations,
-    markdown tables (|), headings (#), blockquotes (>), negative-example callouts,
-    and meta-guidelines prescribing the elimination of anti-patterns.
+    markdown table separators, negative-example callouts, and meta-guidelines
+    prescribing the elimination of anti-patterns.
+    Does NOT unconditionally skip headings, blockquotes, or generic tables so that
+    actual directives in those contexts remain auditable.
     """
     line_s = line.strip()
     if not line_s:
         return True
 
-    # 1. Markdown tables (| col | col |)
-    if line_s.startswith("|"):
+    # 1. Markdown table formatting separator (|---|---|)
+    if re.match(r"^\|(\s*:?-+:?\s*\|)+$", line_s):
         return True
 
-    # 2. Markdown headings (# Heading)
-    if line_s.startswith("#"):
+    # 2. Anti-pattern reference tables (e.g. Section 10 taxonomy tables)
+    if line_s.startswith("|") and any(kw in line_s.lower() for kw in [
+        "anti-pattern", "signals & examples", "why it degrades", "correct fix",
+        "obsolete scaffold", "pressure language", "fossils & relics", "over-specification"
+    ]):
         return True
 
-    # 3. Blockquotes (> quote)
-    if line_s.startswith(">"):
+    # 3. Documentation header
+    if line_s.startswith(">") and "synthesized from" in line_s:
         return True
 
     # 4. Explicit negative-example callouts
+    # e.g., - Weak: ..., * Bad: ..., - Anti-pattern: ..., Avoid: ...
     if re.match(
-        r"^(\s*[-*]|\d+\.)?\s*\*{0,2}(weak|bad|anti-pattern|negative|avoid|instead of)\*{0,2}:",
+        r"^(\s*[-*>]|\d+\.)?\s*\*{0,2}(weak|bad|anti-pattern|negative|avoid|instead of)\*{0,2}:",
         line_s,
         re.IGNORECASE,
     ):
@@ -63,7 +69,7 @@ def is_reference_or_negative_callout(line: str) -> bool:
 
     # 5. Rubric evaluation questions / checklist items
     if re.match(
-        r"^(\s*[-*]|\d+\.)?\s*(is|are)\s+.*\b(stripped|replaced|eliminated|removed|avoided)\b",
+        r"^(\s*[-*>]|\d+\.)?\s*(is|are)\s+.*\b(stripped|replaced|eliminated|removed|avoided)\b",
         line_s,
         re.IGNORECASE,
     ):
@@ -134,19 +140,22 @@ def find_cruft(content: str, filename: str = "") -> list[dict]:
     ]
 
     in_code_block = False
+    code_lang = ""
     for i, line in enumerate(lines):
         line_num = i + 1
         line_s = line.strip()
 
         if line_s.startswith("```") or line_s.startswith("~~~"):
-            in_code_block = not in_code_block
+            if not in_code_block:
+                in_code_block = True
+                code_lang = line_s.lstrip("`~").strip().lower()
+            else:
+                in_code_block = False
+                code_lang = ""
             continue
 
-        if in_code_block:
-            continue
-
-        # Skip scanning promptsmith documentation headers
-        if line_s.startswith(">") and "synthesized from" in line_s:
+        # If inside non-prompt code blocks (e.g. python, bash, json), skip language syntax lines
+        if in_code_block and code_lang in ("python", "py", "bash", "sh", "json", "yaml", "yml", "javascript", "typescript", "ts", "js", "rust", "go", "toml"):
             continue
 
         if is_reference_or_negative_callout(line):
@@ -449,10 +458,40 @@ def cmd_tax(args):
     print(f"200k Context Consumption:          {utilization_200k:.1f}% ({status})")
 
 
+def normalize_target_model(target_model: str) -> str:
+    """Normalize model shorthand or variations to canonical target model string."""
+    norm = target_model.lower().strip()
+    if norm in ("glm", "glm-5.3", "glm5.3", "glm-5.3 (z.ai)", "z.ai", "z-ai"):
+        return "GLM-5.3 (Z.ai)"
+    elif norm in ("glm-flash", "glm-5.3-flash", "glm5.3-flash", "flash"):
+        return "GLM-5.3-Flash (Z.ai)"
+    elif norm in ("agy", "antigravity", "gemini"):
+        return "agy (Antigravity 2.0 / Gemini 3.8)"
+    elif norm in ("claude", "claude-code", "claude code"):
+        return "Claude Code"
+    elif norm in ("codex", "gpt"):
+        return "Codex"
+    elif norm in ("deepseek", "r1", "v3"):
+        return "DeepSeek (V3 / R1)"
+    return target_model.strip()
+
+
+def yaml_scalar(val: str) -> str:
+    """Format a string safely for YAML frontmatter scalar values."""
+    import json
+    clean = val.strip().replace("\r\n", " ").replace("\n", " ")
+    if any(c in clean for c in [":", "#", '"', "'", "{", "}", "[", "]", ",", "*", "&", "!", "|", ">", "%", "@"]):
+        return json.dumps(clean)
+    return clean
+
+
 def generate_prompt(mode: str, intent: str, target_model: str = "agy (Antigravity 2.0 / Gemini 3.8)") -> str:
     """Generate a valid, frontmattered prompt adhering to the 7-pillar rubric."""
     import datetime
     today = datetime.date.today().strftime("%Y-%m-%d")
+
+    target_model = normalize_target_model(target_model)
+    is_glm = "glm" in target_model.lower()
 
     norm_mode = mode.lower().strip()
     if norm_mode in ("brief", "coding-agent-brief", "coding"):
@@ -466,12 +505,17 @@ def generate_prompt(mode: str, intent: str, target_model: str = "agy (Antigravit
     else:
         canonical_mode = "coding-agent-brief"
 
+    fm_target_model = yaml_scalar(target_model)
+    fm_intent = yaml_scalar(intent)
+    body_intent = intent.strip()
+
     if canonical_mode == "coding-agent-brief":
+        glm_constraint = "\n- Reasoning stance: Native always-on reasoning enabled; avoid manual chain-of-thought scaffolds. Calibrate effort to max for software engineering." if is_glm else ""
         return f"""---
 created: {today}
 mode: coding-agent-brief
-target_model: {target_model}
-intent: {intent}
+target_model: {fm_target_model}
+intent: {fm_intent}
 ---
 
 <role>
@@ -485,7 +529,7 @@ Keep static invariants here at the top to preserve prompt cache prefixes.
 </context>
 
 <task>
-{intent}
+{body_intent}
 
 Observable Done Criteria:
 1. Implement the requested changes addressing the core intent cleanly.
@@ -498,7 +542,7 @@ Observable Done Criteria:
 - Anti-slurp: Inspect files with targeted line bounds (`rg -n -C 1`, `git diff --stat`). Never dump whole files >150 lines.
 - Surgical diffs: Apply minimal targeted edits or unified diffs; never echo back unchanged code blocks.
 - Tool boundaries: Use dedicated file-reading/editing tools over raw shell redirection (`cat > file`) to allow harness staleness checks.
-- Harness Directives Mandate: Treat this brief as an imperative Directive; proceed directly to exploration, plan artifact generation, and implementation.
+- Harness Directives Mandate: Treat this brief as an imperative Directive; proceed directly to exploration, plan artifact generation, and implementation.{glm_constraint}
 - Post-edit silence: After code modifications, run tests silently without echoing verbose test suite logs or full file contents.
 </constraints>
 
@@ -517,8 +561,8 @@ Provide a concise summary of changes, surgical diff of modifications, and verifi
         return f"""---
 created: {today}
 mode: repo-rules
-target_model: {target_model}
-intent: {intent}
+target_model: {fm_target_model}
+intent: {fm_intent}
 ---
 
 <role>
@@ -526,7 +570,7 @@ You are an autonomous engineering assistant operating within this repository.
 </role>
 
 <context>
-Repository context: {intent}
+Repository context: {body_intent}
 Standards: Modern, minimal, well-tested production patterns.
 Preserve static repository guidelines at the root to maintain prompt cache prefix invariance.
 </context>
@@ -555,12 +599,12 @@ Run local test and lint checks to confirm clean exit status:
         return f"""---
 created: {today}
 mode: general-llm-prompt
-target_model: {target_model}
-intent: {intent}
+target_model: {fm_target_model}
+intent: {fm_intent}
 ---
 
 <context>
-Task context: {intent}
+Task context: {body_intent}
 Keep background facts and reference material here at the top for prompt cache stability.
 </context>
 
@@ -588,13 +632,13 @@ Present output directly within clean structural delimiters without conversationa
         return f"""---
 created: {today}
 mode: prompt-compressor
-target_model: {target_model}
-intent: {intent}
+target_model: {fm_target_model}
+intent: {fm_intent}
 ---
 
 <task>
 Compress and de-cruft the target prompt while preserving 100% of load-bearing context and constraints.
-Target intent: {intent}
+Target intent: {body_intent}
 </task>
 
 <compression_directives>
@@ -691,7 +735,7 @@ def main():
     p_gen = subparsers.add_parser("generate", help="Generate a valid prompt template programmatically")
     p_gen.add_argument("--mode", default="brief", choices=["brief", "rules", "general", "compress", "coding-agent-brief", "repo-rules", "general-llm-prompt", "prompt-compressor"], help="Prompt mode (default: brief)")
     p_gen.add_argument("--intent", required=True, help="Intent or task description for the prompt")
-    p_gen.add_argument("--target-model", default="agy (Antigravity 2.0 / Gemini 3.8)", help="Target model / harness")
+    p_gen.add_argument("--target-model", default="agy (Antigravity 2.0 / Gemini 3.8)", help="Target model / harness (e.g. agy, GLM-5.3, Claude Code, Codex, DeepSeek)")
     p_gen.add_argument("-o", "--output", help="Optional output file path")
 
     p_eval = subparsers.add_parser("eval", help="Run automated 7-pillar rubric evals and regression assertions")

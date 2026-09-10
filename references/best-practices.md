@@ -196,6 +196,13 @@ Why: Modern models can over-delegate to subagents when a single fast tool call w
   * Sampling: $T=0.6$ for R1 reasoning (avoid $T=0.0$ greedy decoding loops); $T=0.0$ for V3 deterministic code editing.
   * Trailing space rule: never leave a space after `Assistant:` in prompt templates.
   * 64-token prefix caching: align static prefixes to 64-token blocks for 90% discount.
+- **GLM-5.3 & GLM-5.3-Flash (Z.ai GLM Coding Plan / Claude Code / Cline / Codex):**
+  * Mandatory Reasoning: always-on `thinking: {type: "enabled"}`; calibrate via `reasoning_effort` (`low`, `high`, `max` — default `max` for software engineering).
+  * Dual-Protocol Drop-In: OpenAI `/coding/paas/v4` for Cline/Cursor, Anthropic `/anthropic` for Claude Code (`[1m]` suffix, `CLAUDE_CODE_AUTO_COMPACT_WINDOW: 1000000`), `/v1` for Codex.
+  * Token Efficiency: ~50,000 tokens/task on Code Bench (High) at 31.4% accuracy vs Opus 4.8 at 29.5% with ~120,000 tokens; 1M context with automatic implicit caching.
+  * 4-Element Task Framework: structure briefs with Goal, Context, Constraints, and Done When (observable test verification).
+  * Sampling: $T=1.0$ for reasoning search; do not micromanage with manual CoT incantations.
+  * Streaming deltas: isolate `delta.reasoning_content` from `delta.content` to keep tool call buffers clean.
 
 ---
 

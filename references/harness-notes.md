@@ -142,6 +142,28 @@ Antigravity and Gemini CLI operate with local tooling, TUI interactive buffers, 
 - **64-Token Prefix Caching:**
   * DeepSeek API caches prefixes at 64-token increments automatically. Keep repository rules, tool declarations, and file envelopes static at the top to secure 90% input token discounts.
 
+## GLM-5.3 (Z.ai GLM Coding Plan, Cline/Cursor/Claude Code drop-in)
+
+- **Dual-Protocol Endpoints & Drop-In Routing:**
+  * OpenAI Chat Completion: `https://api.z.ai/api/coding/paas/v4` (for Cline, Cursor, Continue, Aider).
+  * OpenAI Response Protocol: `https://api.z.ai/api/v1` (for Codex, LiteLLM, OpenAI SDK).
+  * Anthropic Message Protocol: `https://api.z.ai/api/anthropic` (for Claude Code, Goose).
+- **Context Ceiling & 1M Window Configuration:**
+  * 1,000,000 token context window, 128,000 token output generation ceiling.
+  * Claude Code setup: In `~/.claude/settings.json`, set `ANTHROPIC_BASE_URL: "https://api.z.ai/api/anthropic"`, configure model names with the `[1m]` suffix (e.g. `glm-5.3-flash[1m]` or `glm-5.3[1m]`), and set `"CLAUDE_CODE_AUTO_COMPACT_WINDOW": "1000000"` to prevent premature session compaction.
+- **Mandatory Reasoning Architecture (`thinking: {type: "enabled"}`):**
+  * Disabling reasoning is not supported; passing `thinking.type: "disabled"` produces an API error.
+  * Reasoning effort calibration: `low` (mild transforms, single-file lint fixes), `high` (feature implementations, cross-component refactors), and `max` (default, deep reasoning for complex software engineering and long-horizon agent tasks).
+  * Claude Code `/effort` auto-conversion: `minimal`/`light`/`low` maps to `low`; `medium`/`high` maps to `high`; `xhigh`/`max`/`ultra` maps to `max`.
+- **Sampling Controls ($T=1.0$):**
+  * Recommended `temperature = 1.0` for reasoning generation to maintain exploration entropy during test-time search. Avoid greedy decoding ($T=0.0$) on reasoning workflows.
+- **Token Economics & Benchmarks:**
+  * Consumes ~50,000 tokens per task on Z.ai Code Bench (High) at 31.4% accuracy vs Claude Opus 4.8 at 29.5% consuming ~120,000 tokens.
+  * Flash variant (`glm-5.3-flash`): 320B total, 18B active MoE with hybrid sparse/linear attention, native multimodal visual coding, 3x quota on Coding Plans.
+  * Automatic implicit context caching: reuses identical system prompts and history prefixes with discount billing reported in `usage.prompt_tokens_details.cached_tokens`.
+- **Streaming Delta Contract:**
+  * SSE streams separate reasoning tokens (`delta.reasoning_content`) from user-facing text (`delta.content`). Outer harnesses must isolate reasoning tokens to prevent polluting tool parameter buffers.
+
 ## Other / unknown harness
 
 Cursor, Cline, Aider, Copilot, a raw API loop, or anything unnamed: write to the common core above. The per-harness sections mostly reduce to two questions — **(a) does this harness want progress narration in the prompt, and (b) how autonomous is its default posture?** If you can't answer those, assume "no extra narration" and "moderately autonomous" and move on.
