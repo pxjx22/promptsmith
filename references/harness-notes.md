@@ -175,6 +175,24 @@ Antigravity and Gemini CLI operate with local tooling, TUI interactive buffers, 
 - **Compaction & Session Pruning:**
   * OpenCode auto-compactor manages tokens dynamically (`preserve_recent_tokens`). Keep static repository rules and invariant files top-loaded to preserve session coherence.
 
+## Tool Surface & Environment Capabilities Discovery (Skills, Plugins, MCPs)
+
+When crafting prompts, ground tasks in the concrete tools, skills, and MCP servers available in the host environment:
+
+- **Claude Code**:
+  * Skills live in `~/.claude/skills/<skill>/SKILL.md` or `.claude/skills/`. Instruct Claude Code to activate them via `/skill-name` or by referencing the skill workflow in `<context>`.
+  * MCP servers are configured in `~/.claude/settings.json`, `~/.claude.json`, or `.claude/mcp.json`. Instruct Claude to call specific MCP tool names directly.
+- **OpenAI Codex**:
+  * Skills live in `~/.codex/skills/<skill>/SKILL.md` (invoked with `$skill-name`).
+  * MCP servers and plugins are configured in `~/.codex/config.toml` (`[mcp_servers]`, `[plugins]`). Instruct Codex to leverage active MCP tools and solver tools.
+- **Google Antigravity & Gemini CLI (AGY)**:
+  * Skills live in `~/.gemini/config/skills/`, `builtin/skills/`, and within plugins in `config/plugins/<plugin>/skills/`. Automatically matched or invoked via `/skill-name`.
+  * Active MCP servers are exposed in `~/.gemini/antigravity-cli/mcp/<server>/` and `settings.json`. Instruct Gemini agents to call specific MCP tools (e.g. `gemini_search_docs` from `gemini-api-docs`, or Chrome DevTools MCP).
+- **OpenCode**:
+  * Skills live in `~/.config/opencode/skills/` and commands in `~/.config/opencode/commands/`.
+- **Environment Discovery Command**:
+  * Run `./tools/token_audit.py env` (or `python3 tools/env_discovery.py`) to inspect, search, or format active skills, plugins, and MCP servers into a prompt injection block. Use `--with-env` when running `token_audit.py generate` to automatically embed active capabilities.
+
 ## Other / unknown harness
 
 Cursor, Cline, Aider, Copilot, a raw API loop, or anything unnamed: write to the common core above. The per-harness sections mostly reduce to two questions — **(a) does this harness want progress narration in the prompt, and (b) how autonomous is its default posture?** If you can't answer those, assume "no extra narration" and "moderately autonomous" and move on.

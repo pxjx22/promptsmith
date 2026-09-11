@@ -36,7 +36,7 @@ each with a recommended default.
    plan first for review (explore → plan → execute)? (*Harness note for agy / Gemini CLI:* Gemini models
    assume all turns are read-only Inquiries unless prompted with unambiguous imperative verbs like `implement`, `fix`, or `modify`;
    write explicit action directives and done criteria to avoid the agent stalling in advisory mode.)
-8. **Tool boundaries & gating** — raw bash vs dedicated harness tools? Should hard-to-reverse actions (destructive git, external calls) be gated behind interactive approval?
+8. **Tool boundaries & environment capabilities** — raw bash vs dedicated harness tools? Are there specific skills, plugins, or MCP servers installed in the environment that the agent should leverage? (Run `./tools/token_audit.py env` to discover active capabilities like browser automation, specialized documentation MCPs, or framework skills.)
 
 (Target harness is resolved before this pool, not inside it — see above.)
 
@@ -51,6 +51,12 @@ You are an autonomous engineer working in <project / stack>. <One line on what t
 <Relevant background: where code lives, build/test tooling, domain invariants.
 Point at files rather than pasting them unless short.
 Keep static invariants here at the top to preserve prompt cache prefixes.>
+
+<!-- Optional: Discovered environment capabilities (from `tools/token_audit.py env`) -->
+<available_environment_capabilities>
+- Skills: `<e.g. ratatui, chrome-devtools>`
+- MCP Servers: `<e.g. gemini-api-docs, cloudflare-docs>`
+</available_environment_capabilities>
 </context>
 
 <task>

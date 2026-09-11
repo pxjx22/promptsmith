@@ -18,7 +18,7 @@ DESTS=(
   "${HOME}/.opencode/skills/promptsmith"
 )
 
-echo "=== Promptsmith Installer (v2.2.0) ==="
+echo "=== Promptsmith Installer (v2.3.0) ==="
 echo "Source: $SCRIPT_DIR"
 echo
 

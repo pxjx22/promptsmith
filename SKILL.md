@@ -2,7 +2,7 @@
 name: promptsmith
 description: Craft or improve a prompt for an LLM or coding agent following prompt-engineering best practices. Use this skill when the user explicitly asks to write, draft, refine, or critique a prompt (e.g. `/promptsmith`, `$promptsmith`, or "help me write a prompt for…"). Not for answering the underlying task itself.
 metadata:
-  version: 2.2.0
+  version: 2.3.0
 ---
 
 # Promptsmith
@@ -71,6 +71,7 @@ adjustments:
 - **agy & Gemini CLI (Antigravity 2.0 / Gemini 3.8):** Directives mandate (imperative action verbs to avoid read-only inquiry mode);
   verification loop is primary; explore -> plan artifact -> execute; hydrate with `@path` and pasted media (`ctrl+v`);
   sub-agents as context compressors (batch tasks >3 files, verbose test/build runs); strict post-edit silence.
+- **Environment Capabilities Discovery:** Check what skills, plugins, and MCP servers are installed in the host environment using `./tools/token_audit.py env` (or `python3 tools/env_discovery.py`). When the task matches specialized local capabilities (e.g. browser automation, accessibility testing, framework skills like Ratatui, or documentation MCP servers), bind them directly into `<context>` or `<constraints>` so the prompt explicitly directs the agent to call them.
 
 **For an Improve or Compress run:** evaluate the draft against the 7-pillar rubric:
 1. Goal & Done-Criteria
@@ -152,7 +153,8 @@ To preserve session context tokens, delivery is ultra-terse by default:
 - `references/general-llm-prompt.md` — templates (base + JSON schema + triage + prompt-compressor) + question pool + 7-pillar rubric.
 - `references/best-practices.md` — cheatsheet: each principle with rationale and example (including Section 9: Token Efficiency & Cache Hygiene).
 - `references/harness-notes.md` — per-harness conventions & token levers (Claude Code Fable 5.1/Opus 5/Sonnet 5, Codex GPT-5.6, agy Antigravity 2.0 / Gemini 3.8).
-- `tools/token_audit.py` — benchmark, cruft audit, headless generator, and comparison utility (`audit`, `cruft`, `generate`, `compare`, `tax`, `eval`).
+- `tools/env_discovery.py` — discover installed skills, plugins, and MCP servers across Claude Code, Codex, Gemini/Antigravity, and OpenCode (used standalone or via `token_audit.py env`).
+- `tools/token_audit.py` — benchmark, cruft audit, headless generator, environment discovery, and comparison utility (`audit`, `cruft`, `generate`, `compare`, `tax`, `env`, `eval`).
 - `tools/eval_rubrics.py` — automated 7-pillar rubric eval runner and OpenAI Evals `cot_classify` reverse-line parsing harness.
 
 Read only the mode reference you need, plus the cheatsheet, plus

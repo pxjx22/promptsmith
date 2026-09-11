@@ -473,6 +473,37 @@ logging:
         failures.append(f"Fenced cruft discrimination failed: directive_findings={len(f_directive)}, code_findings={len(f_code)}, config_findings={len(f_config)}")
         print(f"[✗] FAIL: Fenced Cruft Discrimination: {failures[-1]}")
 
+    # --- Test 8: Environment Capabilities Discovery & Prompt Injection ---
+    tests_run += 1
+    try:
+        from env_discovery import scan_environment, filter_by_query, format_prompt_context
+        from token_audit import generate_prompt
+
+        env_data = scan_environment()
+        assert env_data["counts"]["total"] > 0, "No environment capabilities discovered"
+        assert len(env_data["skills"]) > 0, "No skills discovered"
+
+        filtered = filter_by_query(env_data, "devtools")
+        xml_context = format_prompt_context(filtered)
+        assert "<available_environment_capabilities>" in xml_context
+        assert "</available_environment_capabilities>" in xml_context
+
+        generated_brief = generate_prompt(
+            mode="brief",
+            intent="Debug and resolve web accessibility violations",
+            target_model="agy (Antigravity 2.0 / Gemini 3.8)",
+            env_context=xml_context,
+        )
+        gen_rubric = evaluate_rubric(generated_brief, filename="generated_env_brief.md")
+        if gen_rubric["score"] == 7 and gen_rubric["cruft_count"] == 0:
+            print("[✓] PASS: Environment discovery and prompt capability injection verified (7/7 on rubric)")
+        else:
+            failures.append(f"Environment capability injection prompt failed rubric: score={gen_rubric['score']}/7, cruft={gen_rubric['cruft_count']}")
+            print(f"[✗] FAIL: Environment Discovery & Prompt Injection: {failures[-1]}")
+    except Exception as e:
+        failures.append(f"Environment discovery test error: {e}")
+        print(f"[✗] FAIL: Environment Discovery & Prompt Injection: {e}")
+
     print("--------------------------------------------------------------------------------")
     if not failures:
         print(f"ALL {tests_run} REGRESSION SUITE CHECKS PASSED WITH ZERO ERRORS.")

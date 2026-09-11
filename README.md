@@ -139,8 +139,13 @@ Promptsmith includes a standalone benchmarking tool [`tools/token_audit.py`](too
 # Inspect prompt files for dated scaffolds, pressure shouting, or cruft
 ./tools/token_audit.py cruft references/*.md SKILL.md
 
-# Headless programmatic prompt generation for CI/CD pipelines
-./tools/token_audit.py generate --mode brief --intent "Fix connection pool race"
+# Check installed skills, plugins, and MCP servers across AI harnesses
+./tools/token_audit.py env
+# or standalone:
+./tools/env_discovery.py --query devtools --format prompt
+
+# Headless programmatic prompt generation with embedded environment capabilities
+./tools/token_audit.py generate --mode brief --intent "Fix connection pool race" --with-env
 
 # Automated 7-pillar rubric evals and regression suite
 ./tools/token_audit.py eval
@@ -172,14 +177,15 @@ Promptsmith includes model-specific calibration notes in [`references/harness-no
 
 ```
 promptsmith/
-├── SKILL.md                          # Master skill orchestrator & entrypoint (v2.2.0)
+├── SKILL.md                          # Master skill orchestrator & entrypoint (v2.3.0)
 ├── install.sh                        # Cross-harness installer and syncer
 ├── LICENSE                           # MIT License
 ├── README.md                         # Documentation & usage guide
 ├── agents/
 │   └── openai.yaml                   # Codex agent skill definition
 ├── tools/
-│   ├── token_audit.py                # Token audit, benchmarking, generator & comparison CLI
+│   ├── env_discovery.py              # Environment discovery: skills, plugins & MCP servers
+│   ├── token_audit.py                # Token audit, benchmarking, generator, env & comparison CLI
 │   └── eval_rubrics.py               # Automated 7-pillar rubric eval runner & regression suite
 └── references/
     ├── best-practices.md             # Core prompt engineering cheatsheet, research & Section 9: Token Hygiene

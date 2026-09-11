@@ -505,7 +505,7 @@ def yaml_scalar(val: str) -> str:
     return json.dumps(clean)
 
 
-def generate_prompt(mode: str, intent: str, target_model: str = "agy (Antigravity 2.0 / Gemini 3.8)") -> str:
+def generate_prompt(mode: str, intent: str, target_model: str = "agy (Antigravity 2.0 / Gemini 3.8)", env_context: str = "") -> str:
     """Generate a valid, frontmattered prompt adhering to the 7-pillar rubric."""
     import datetime
     today = datetime.date.today().strftime("%Y-%m-%d")
@@ -528,6 +528,7 @@ def generate_prompt(mode: str, intent: str, target_model: str = "agy (Antigravit
     fm_target_model = yaml_scalar(target_model)
     fm_intent = yaml_scalar(intent)
     body_intent = intent.strip()
+    env_snippet = f"\n\n{env_context.strip()}" if env_context.strip() else ""
 
     if canonical_mode == "coding-agent-brief":
         glm_constraint = "\n- Reasoning stance: Native always-on reasoning enabled; avoid manual chain-of-thought scaffolds. Calibrate effort to max for software engineering." if is_glm else ""
@@ -545,7 +546,7 @@ You are an autonomous senior software engineer working in this codebase.
 <context>
 Target codebase: Current workspace
 Task context: {intent}
-Keep static invariants here at the top to preserve prompt cache prefixes.
+Keep static invariants here at the top to preserve prompt cache prefixes.{env_snippet}
 </context>
 
 <task>
@@ -592,7 +593,7 @@ You are an autonomous engineering assistant operating within this repository.
 <context>
 Repository context: {body_intent}
 Standards: Modern, minimal, well-tested production patterns.
-Preserve static repository guidelines at the root to maintain prompt cache prefix invariance.
+Preserve static repository guidelines at the root to maintain prompt cache prefix invariance.{env_snippet}
 </context>
 
 <guidelines>
@@ -625,7 +626,7 @@ intent: {fm_intent}
 
 <context>
 Task context: {body_intent}
-Keep background facts and reference material here at the top for prompt cache stability.
+Keep background facts and reference material here at the top for prompt cache stability.{env_snippet}
 </context>
 
 <instructions>
@@ -676,10 +677,66 @@ Output the compressed prompt in a fenced code block followed by a single-line co
     return ""
 
 
+def cmd_env(args):
+    """Inspect and report installed skills, plugins, and MCP servers in the environment."""
+    try:
+        from env_discovery import scan_environment, filter_by_query, format_summary, format_prompt_context
+    except ImportError:
+        tools_dir = os.path.dirname(os.path.abspath(__file__))
+        if tools_dir not in sys.path:
+            sys.path.insert(0, tools_dir)
+        from env_discovery import scan_environment, filter_by_query, format_summary, format_prompt_context
+
+    data = scan_environment(
+        harness=getattr(args, "harness", "all"),
+        item_type=getattr(args, "type", "all"),
+        project_dir=getattr(args, "project_dir", None),
+    )
+
+    query = getattr(args, "query", None)
+    if query:
+        data = filter_by_query(data, query)
+
+    fmt = getattr(args, "format", "summary")
+    show_tools = not getattr(args, "no_tools", False)
+
+    if fmt == "json":
+        import json
+        print(json.dumps(data, indent=2))
+    elif fmt == "prompt":
+        print(format_prompt_context(data, show_tools=show_tools))
+    else:
+        print(format_summary(data, show_tools=show_tools))
+
+
 def cmd_generate(args):
     """Headless CLI prompt generation for CI/CD pipelines and scripts."""
     target_model = getattr(args, "target_model", None) or "agy (Antigravity 2.0 / Gemini 3.8)"
-    prompt_text = generate_prompt(mode=args.mode, intent=args.intent, target_model=target_model)
+    env_context = ""
+    if getattr(args, "with_env", False):
+        try:
+            from env_discovery import scan_environment, filter_by_query, format_prompt_context
+        except ImportError:
+            tools_dir = os.path.dirname(os.path.abspath(__file__))
+            if tools_dir not in sys.path:
+                sys.path.insert(0, tools_dir)
+            from env_discovery import scan_environment, filter_by_query, format_prompt_context
+
+        env_data = scan_environment(
+            harness=getattr(args, "harness_env", "all"),
+            project_dir=getattr(args, "project_dir", None),
+        )
+        filter_env = getattr(args, "filter_env", None)
+        if filter_env:
+            env_data = filter_by_query(env_data, filter_env)
+        env_context = format_prompt_context(env_data)
+
+    prompt_text = generate_prompt(
+        mode=args.mode,
+        intent=args.intent,
+        target_model=target_model,
+        env_context=env_context,
+    )
     if getattr(args, "output", None):
         out_path = os.path.expanduser(args.output)
         parent = os.path.dirname(os.path.abspath(out_path))
@@ -764,7 +821,18 @@ def main():
     p_gen.add_argument("--mode", default="brief", choices=["brief", "rules", "general", "compress", "coding-agent-brief", "repo-rules", "general-llm-prompt", "prompt-compressor"], help="Prompt mode (default: brief)")
     p_gen.add_argument("--intent", required=True, help="Intent or task description for the prompt")
     p_gen.add_argument("--target-model", default="agy (Antigravity 2.0 / Gemini 3.8)", help="Target model / harness (e.g. agy, GLM-5.3, Claude Code, Codex, OpenCode, DeepSeek)")
+    p_gen.add_argument("--with-env", "--include-env", dest="with_env", action="store_true", help="Embed discovered environment skills, plugins, and MCPs into prompt context")
+    p_gen.add_argument("--filter-env", help="Filter embedded environment capabilities by query term")
+    p_gen.add_argument("--harness-env", default="all", choices=["all", "claude", "codex", "gemini", "opencode", "project"], help="Filter embedded capabilities by harness")
     p_gen.add_argument("-o", "--output", help="Optional output file path")
+
+    p_env = subparsers.add_parser("env", help="Check what skills, plugins, or MCP servers are installed in the environment")
+    p_env.add_argument("--harness", default="all", choices=["all", "claude", "codex", "gemini", "opencode", "project"], help="Filter by AI harness (default: all)")
+    p_env.add_argument("--type", default="all", choices=["all", "skill", "plugin", "mcp"], help="Filter by capability type (default: all)")
+    p_env.add_argument("-q", "--query", "--filter", dest="query", help="Search filter matching name, description, or tools")
+    p_env.add_argument("--format", default="summary", choices=["summary", "prompt", "json"], help="Output format: summary (readable), prompt (XML injection block), json (data)")
+    p_env.add_argument("--project-dir", default=None, help="Target project directory to inspect for local configurations")
+    p_env.add_argument("--no-tools", action="store_true", help="Omit detailed tool names from MCP server entries")
 
     p_eval = subparsers.add_parser("eval", help="Run automated 7-pillar rubric evals and regression assertions")
     p_eval.add_argument("files", nargs="*", help="Optional prompt files to evaluate against 7-pillar rubric")
@@ -781,6 +849,8 @@ def main():
         cmd_tax(args)
     elif args.command == "generate":
         cmd_generate(args)
+    elif args.command == "env":
+        cmd_env(args)
     elif args.command == "eval":
         cmd_eval(args)
 
