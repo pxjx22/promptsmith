@@ -2,7 +2,7 @@
 name: promptsmith
 description: Craft or improve a prompt for an LLM or coding agent following prompt-engineering best practices. Use this skill when the user explicitly asks to write, draft, refine, or critique a prompt (e.g. `/promptsmith`, `$promptsmith`, or "help me write a prompt for…"). Not for answering the underlying task itself.
 metadata:
-  version: 2.3.0
+  version: 2.4.0
 ---
 
 # Promptsmith
@@ -59,19 +59,24 @@ genuinely unresolved.
 
 ### 3. Draft
 
-Read `references/best-practices.md` and the mode reference, then write the
-prompt applying the checklist below. For a coding brief, read
-`references/harness-notes.md` for the resolved harness and apply its
-adjustments:
-- **Claude Code (Fable 5.1 / Opus 5 / Sonnet 5):** Ask for progress notes on Fable 5.1;
-  demand conciseness on Opus 5; bar unprompted repo-root scratch files; guard against test-gaming.
-- **Codex (GPT-5.6 series: terra / sol):** Lean into senior-engineer autonomy; use
-  natural 1–2 sentence preambles without rigid upfront plans that cause early stopping;
-  enforce solver tools (`rg`, `git`, `apply_patch`) and strict error handling; protect dirty worktrees.
-- **agy & Gemini CLI (Antigravity 2.0 / Gemini 3.8):** Directives mandate (imperative action verbs to avoid read-only inquiry mode);
-  verification loop is primary; explore -> plan artifact -> execute; hydrate with `@path` and pasted media (`ctrl+v`);
-  sub-agents as context compressors (batch tasks >3 files, verbose test/build runs); strict post-edit silence.
-- **Environment Capabilities Discovery:** Check what skills, plugins, and MCP servers are installed in the host environment using `./tools/token_audit.py env` (or `python3 tools/env_discovery.py`). When the task matches specialized local capabilities (e.g. browser automation, accessibility testing, framework skills like Ratatui, or documentation MCP servers), bind them directly into `<context>` or `<constraints>` so the prompt explicitly directs the agent to call them.
+Load as little as the draft needs. Everything you read stays in context for
+the rest of the session, so a full read of every reference (~20k tokens)
+can outweigh the prompt you're writing.
+
+- **Always:** the checklist below plus the templates in the mode reference.
+- **Coding brief:** in `references/harness-notes.md`, read only
+  `## Common core` and the `##` section for the resolved harness
+  (`rg -n '^##' references/harness-notes.md` gives the line ranges). Inside the
+  Claude section, read only the target model's subsection and
+  `### Cross-Claude guards`.
+- **`references/best-practices.md`:** open a single section only when the
+  checklist doesn't settle a question (e.g. §4 few-shot balancing,
+  §9 caching, §10 cruft taxonomy). Don't read the whole file.
+- **Prompt-compressor:** read only Pattern D in `references/general-llm-prompt.md`.
+- **Environment capabilities:** when the task could use specialised local
+  skills or MCP servers, run `./tools/token_audit.py env` (or
+  `python3 tools/env_discovery.py`) and name the matching ones in `<context>`
+  or `<constraints>` so the agent calls them.
 
 **For an Improve or Compress run:** evaluate the draft against the 7-pillar rubric:
 1. Goal & Done-Criteria
@@ -81,6 +86,13 @@ adjustments:
 5. Grounding & Verification Loop
 6. Target Harness & Tool Surface Alignment (dedicated tools for gating/staleness vs. shell for breadth)
 7. Token Efficiency & Cache Hygiene (anti-slurp limits, wire prefix stability, diff output, thinking damping)
+
+**Is compression worth it?** A compress run costs roughly 4–5k tokens. It
+pays off only when the savings recur: (tokens saved) × (times the prompt is
+sent) should clear that. Rules files and system prompts resent every turn
+clear it quickly. A one-off prompt under ~1k tokens doesn't: say so in one
+line and offer a quick quality edit instead. Cached prefixes are already
+billed at 0.05–0.1x, so the savings there are mostly context-window headroom.
 
 ### 4. Deliver (Ultra-Terse Default)
 
@@ -135,6 +147,13 @@ To preserve session context tokens, delivery is ultra-terse by default:
   unrelated code", "do not create unprompted scratch/summary files in root",
   and "confirm before destructive or hard-to-reverse actions".
 - Guard against test-gaming: implement general solutions for all valid inputs.
+- Thinking: on always-thinking models (Claude Fable 5.1, Opus 5.5), control
+  depth with `effort`, not prompt lines. Don't ask for reasoning written out in
+  the response; Opus 5.5 can refuse it (`reasoning_extraction`).
+- Frontend: name the specific default styles to avoid. "Avoid a generic AI
+  look" just swaps one default for another.
+- User-pasted text: wrap it in `<pasted_content id="…">` tags and tell the
+  model to follow instructions inside only where the user's own message asks.
 - Anti-Cruft & Framing Hygiene:
   * Strip pressure language: eliminate shouted caps (`CRITICAL: MUST`, `IMPORTANT: NEVER`, `!!`) and anxious trait claims; state requirements calmly with the "why".
   * Retire obsolete scaffolds: remove "think step by step", `<scratchpad>`, assistant JSON prefills, and update cadences in favor of native thinking and Structured Outputs.
@@ -152,13 +171,13 @@ To preserve session context tokens, delivery is ultra-terse by default:
 - `references/repo-rules.md` — templates and question pool for `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`.
 - `references/general-llm-prompt.md` — templates (base + JSON schema + triage + prompt-compressor) + question pool + 7-pillar rubric.
 - `references/best-practices.md` — cheatsheet: each principle with rationale and example (including Section 9: Token Efficiency & Cache Hygiene).
-- `references/harness-notes.md` — per-harness conventions & token levers (Claude Code Fable 5.1/Opus 5/Sonnet 5, Codex GPT-5.6, agy Antigravity 2.0 / Gemini 3.8).
+- `references/harness-notes.md` — per-harness conventions & token levers (Claude Code Fable 5.1/Opus 5.5/Opus 5/Sonnet 5, Codex GPT-5.6, agy Antigravity 2.0 / Gemini 3.8, DeepSeek, GLM, OpenCode).
 - `tools/env_discovery.py` — discover installed skills, plugins, and MCP servers across Claude Code, Codex, Gemini/Antigravity, and OpenCode (used standalone or via `token_audit.py env`).
 - `tools/token_audit.py` — benchmark, cruft audit, headless generator, environment discovery, and comparison utility (`audit`, `cruft`, `generate`, `compare`, `tax`, `env`, `eval`).
 - `tools/eval_rubrics.py` — automated 7-pillar rubric eval runner and OpenAI Evals `cot_classify` reverse-line parsing harness.
 
-Read only the mode reference you need, plus the cheatsheet, plus
-`harness-notes.md` when a coding brief names its target harness.
+Read only what step 3 lists: the mode reference, one harness section, and a
+cheatsheet section only when you need it.
 
 ## Maintenance
 

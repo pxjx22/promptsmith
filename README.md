@@ -2,7 +2,7 @@
 
 > **Cross-tool prompt engineering and agent brief authoring skill for Claude Code, OpenAI Codex, and Google Antigravity (AGY).**
 
-Promptsmith is a unified skill that designs, refines, and audits prompts and agent task briefs across frontier AI developer environments. Built on peer-reviewed prompt engineering literature and harness-specific guidance for 2026 frontier models (Anthropic Claude 5 series, OpenAI GPT-5.6 series, and Google Gemini 3.8 / Antigravity 2.0).
+Promptsmith is a unified skill that designs, refines, and audits prompts and agent task briefs across frontier AI developer environments. Built on peer-reviewed prompt engineering literature and harness-specific guidance for 2026 frontier models (Anthropic Claude 5 series incl. Opus 5.5, OpenAI GPT-5.6 series, and Google Gemini 3.8 / Antigravity 2.0).
 
 ---
 
@@ -23,6 +23,7 @@ Promptsmith is a unified skill that designs, refines, and audits prompts and age
   2. `repo-rules`: Authoring and auditing repository instruction files (`AGENTS.md`, `CLAUDE.md`, `GEMINI.md`) with context tax discipline.
   3. `general-llm-prompt`: Production prompts, strict JSON Schemas, few-shot classifiers, and reasoning templates.
   4. `prompt-compressor`: Audit and minify bloated prompts and rules (targeting 40%–60% token savings, anti-slurp bounds, prefix caching).
+- **Pay-for-itself loading**: Each run reads only the mode templates, one harness section, and cheatsheet sections on demand (~5–8k tokens instead of ~20k). Compress runs check that the savings recur before doing the work.
 - **7-Pillar Evaluation Rubric**:
   Goal/Done-Criteria, Information Hierarchy & XML, Positive Framing, Guardrails, Grounding/Verification, Target Harness Alignment, and **Token Efficiency & Cache Hygiene**.
 - **Integrated Token Audit CLI**: Built-in `tools/token_audit.py` for token counting, session context tax projections, and A/B prompt compression comparisons.
@@ -167,7 +168,7 @@ Promptsmith includes model-specific calibration notes in [`references/harness-no
 
 | Family | Supported Models | Harness Optimizations |
 |---|---|---|
-| **Anthropic Claude 5** | Fable 5.1, Opus 5, Sonnet 5 | XML tags (`<context>`, `<instructions>`), prompt caching prefix ordering, Opus verbosity damping, tool line-slicing. |
+| **Anthropic Claude 5** | Fable 5.1, Opus 5.5, Opus 5, Sonnet 5 | XML tags (`<context>`, `<instructions>`), prompt caching prefix ordering, effort over thinking instructions (Opus 5.5), unattended early-stop guards, pasted-content tagging, named frontend anti-patterns. |
 | **OpenAI GPT-5.6** | GPT-5.6 Terra, GPT-5.6 Sol | Strict JSON Schema (`response_format`), `apply_patch` priority over full-file rewrites, prefix caching (>=1024 tokens). |
 | **Google Gemini / AGY** | Gemini 3.8 Flash, Pro, AGY 2.0 | Implementation Plan Artifacts over chat spam, subagent damping, multimodal crop budgeting (`ctrl+v`), grounded citations. |
 
@@ -177,7 +178,7 @@ Promptsmith includes model-specific calibration notes in [`references/harness-no
 
 ```
 promptsmith/
-├── SKILL.md                          # Master skill orchestrator & entrypoint (v2.3.0)
+├── SKILL.md                          # Master skill orchestrator & entrypoint (v2.4.0)
 ├── install.sh                        # Cross-harness installer and syncer
 ├── LICENSE                           # MIT License
 ├── README.md                         # Documentation & usage guide

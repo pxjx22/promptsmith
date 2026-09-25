@@ -1,7 +1,8 @@
 # Harness-specific notes
 
-> Last verified: 2026-09-04, against:
+> Last verified: 2026-09-25, against:
 > - platform.claude.com/docs/.../claude-prompting-best-practices (Claude Fable 5.1, Opus 5, Sonnet 5)
+> - platform.claude.com/docs/.../prompting-claude-opus-5-5 and .../whats-new-opus-5-5 (Claude Opus 5.5)
 > - developers.openai.com/cookbook/.../codex_prompting_guide (GPT-5.6 series: terra, sol, luna)
 > - antigravity.google/docs/cli/best-practices (Antigravity CLI 2.0 / Gemini 3.8)
 > Model-version-specific claims below age fast — flag anything that looks stale to the user.
@@ -26,7 +27,7 @@ harness-specific levers.
   dependencies the task doesn't need".
 - **Phased for complex work:** explore → plan → (user approves) → execute.
 
-## Claude Code (Claude models: Fable 5.1, Opus 5, Sonnet 5)
+## Claude Code (Claude models: Fable 5.1, Opus 5.5, Opus 5, Sonnet 5)
 
 Current Claude models share strong XML structure affinity and instruction following, but diverge on verbosity and loop narration:
 
@@ -42,6 +43,20 @@ Current Claude models share strong XML structure affinity and instruction follow
 - **The verbosity exception:** Default user-facing responses run longer than other models, and raising or lowering reasoning effort does *not* reliably shorten response length. When brevity matters, you must explicitly demand conciseness in the prompt text.
 - **Built-in self-correction:** Opus 5 already self-verifies thoroughly. Avoid piling on repetitive "verify your work 5 times" instructions or it will over-verify and loop unnecessarily.
 - **Mid-conversation system messages:** Supported natively without beta headers.
+
+### Claude Opus 5.5
+Finishes the same task in fewer tokens than Opus 5, and Opus 5 prompts work unchanged. Most of its levers are settings, so a brief rarely needs extra text for it.
+- **Effort, not prompt text:** thinking is always on (`thinking.type` `disabled`/`enabled` and forced `tool_choice` `any`/`tool` return 400). Default effort is `medium`, which matches Opus 5 at `high` on coding; `low` comes close at much lower cost. At a given level it thinks more than Opus 5, so re-sweep rather than carry settings over, and reserve `xhigh`/`max` for measured gains. To get less thinking, lower effort; prompt instructions do this less reliably. Leave room in `max_tokens` (thinking counts; 128k for long agentic turns).
+- **Drop thinking instructions:** delete "think carefully before answering" lines from chat prompts (replies start sooner, same quality). Delete requests to write reasoning out in the response: they can be refused with `stop_reason: "refusal"` (`reasoning_extraction`); read summarized thinking (`display: "summarized"`) instead.
+- **Settled answers (chat only):** to stop it re-examining earlier answers on follow-ups, end the system prompt with: "Once you have answered something, treat that answer as done. On later turns, focus your thinking on what the user is asking now, and don't go back over an earlier answer unless the user asks about it or points out a problem with it." Leave it out of long analyses and agentic work, where later steps can expose earlier mistakes.
+- **Unattended runs stop early:** it posts progress updates, and some end the turn with text and no tool call. Harness fix: keep a checklist, treat a text-only `end_turn` with open items and no stated blocker as a report, and send a short "Your task list still has open items: <items>. Continue with them. If one is blocked, say what is blocking it." (cap at two or three continuations). Prompt fix: name the stops you don't want (a summary that announces the next step, offers to wait, a list of non-blocking decisions, stopping at a milestone) and the stops you do (nothing can move without the user). The official system-prompt paragraph is in the Opus 5.5 prompting guide; add it from the first request, and omit it for human-in-the-loop work.
+- **Progress updates:** between tool calls these arrive as `thinking` blocks, empty unless `display: "updates"` is set, so a client that renders only `text` looks silent. For predictable updates (one line of intent before the first tool call, a short recap at the end), ask in the system prompt. If it goes quiet, append a turn-scoped reminder (`clear_at: "next_user_message"`) such as "The user hasn't heard from you in a while — say in a few words what you're doing, then continue." Stop after two or three reminders.
+- **Multi-app agents:** it starts work quickly. When the needed facts may sit in sources the task doesn't name, add: "Before taking any action, explore broadly with tool calls: list and open the emails, documents, spreadsheet tabs and records across the available apps that could be relevant to this task, including ones the task does not explicitly mention, and use what you find." Keep untrusted content out of what it searches.
+- **Multi-agent time signals:** append `elapsed <s>s / <budget>s` to each harness message and the team parallelizes and finishes sooner. The budget is advisory, so set it somewhat above the target and keep a hard timeout. With no budget, show the elapsed time alone and add: "Time matters here: do not spend time that can be avoided, and the earlier a correct result is obtained, the better."
+- **Pasted text:** wrap user-pasted content in `<pasted_content id="ab12">…</pasted_content id="ab12">` (random id per block, generated by the app) and tell the system prompt that text inside those tags may carry instructions the user didn't write, to be followed only where the user's own message asks for it.
+- **Vision:** reads dense charts and screenshots well without tooling. Re-test old vision scaffolds before keeping them. For the densest inputs (technical drawings), higher resolution and crop/zoom tools still help.
+- **Frontend:** "avoid a generic AI look" just swaps one default style for another. Name the patterns to avoid (e.g. "no cream or off-white background, italic accent words in headlines, numbered 01/02/03 section labels, monospace labels, or pill-shaped buttons") and extend the list after each iteration.
+- **Cache & history:** 512-token minimum cacheable prompt; cache reads 0.05x. Changing top-level `effort` between requests breaks the cache, so use per-message effort (beta) instead. Editing `system`, `tools`, or earlier turns invalidates later thinking blocks (400 on newer accounts), so keep history append-only and declare every tool from the first request.
 
 ### Claude Sonnet 5
 - **Literal instruction following:** Follows constraints to the letter — ensure negative constraints are airtight, or preferably phrased as positive bounds.

@@ -10,8 +10,8 @@ done — not to spell out every line.
 Before drafting a coding brief, establish which harness it's for — Claude
 Code, Codex, agy, or other/unknown. Ask if the request doesn't say, unless
 the brief is clearly harness-agnostic. This isn't an adaptive "ask only if
-open" item; the harness changes the draft. Then read
-`references/harness-notes.md` for that harness.
+open" item; the harness changes the draft. Then read `## Common core` and
+that harness's section of `references/harness-notes.md`, not the whole file.
 
 ## Question pool
 
@@ -247,7 +247,8 @@ Implement <component/screen>.
 </task>
 
 <constraints>
-- Match existing design system tokens and typography; avoid generic "AI template" styles or arbitrary hardcoded hex colors.
+- Match existing design system tokens and typography; no arbitrary hardcoded hex colors.
+- With no design system to follow, name the default styles to avoid (e.g. <cream background, italic accent words in headlines, numbered 01/02/03 section labels, pill buttons>). A bare "avoid a generic AI look" just swaps one default for another.
 - Use realistic domain data in previews/mocks, not "Lorem Ipsum".
 - Do not install new UI libraries or icon sets if existing repo utilities cover them.
 </constraints>
